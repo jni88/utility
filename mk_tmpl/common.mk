@@ -24,10 +24,10 @@ CC_FLAGS_RELEASE ?= -O2
 
 CC_FLAGS := $(CC_WARN) -std=$(CC_STD) -march=$(CC_MARCH) -I$(DIR_INCLUDE) \
 $(patsubst %, -I%, $(CC_INCLUDE_EXT)) $(CC_FLAGS_EXT) -MMD -MP -MF
-						
-TMP_DIRS := $(sort $(DIR_BUILD) \
-$(DIR_DEBUG_BUILD) $(DIR_RELEASE_BUILD) \
-$(DIR_DEBUG_BIN) $(DIR_RELEASE_BIN))
+
+TMP_DIRS_BUILD := $(DIR_DEBUG_BUILD) $(DIR_RELEASE_BUILD) $(DIR_BUILD)
+TMP_DIRS_BIN := $(DIR_DEBUG_BIN) $(DIR_RELEASE_BIN)
+TMP_DIRS := $(sort $(TMP_DIRS_BUILD) $(TMP_DIRS_BIN))
 
 FILES_SRC := $(wildcard $(DIR_SRC)/*$(SRC_EXT))
 
@@ -47,7 +47,7 @@ $(DIR_RELEASE_BUILD)/%.o, $(FILES_SRC))
 DEPS_RELEASE := $(patsubst $(DIR_SRC)/%$(SRC_EXT), \
 $(DIR_RELEASE_BUILD)/%.d, $(FILES_SRC))
 
-.PHONY: debug release all clean clean_dir
+.PHONY: debug release all clean
 
 debug: $(BIN_DEBUG)
 $(BIN_DEBUG): | $(DIR_DEBUG_BIN)
@@ -61,9 +61,8 @@ clean:
 	@rm -f $(FILES_BIN)
 	@rm -f $(DIR_DEBUG_BUILD)/*.o $(DIR_DEBUG_BUILD)/*.d
 	@rm -f $(DIR_RELEASE_BUILD)/*.o $(DIR_RELEASE_BUILD)/*.d
-
-clean_dir:
-	@rm -rf $(TMP_DIRS)
+	@rm -df $(TMP_DIRS_BUILD) 2> /dev/null | true
+	@rm -df $(TMP_DIRS_BIN) 2> /dev/null | true
 
 $(DIR_DEBUG_BUILD)/%.o: $(DIR_SRC)/%$(SRC_EXT) | \
 												$(DIR_BUILD) $(DIR_DEBUG_BUILD)
