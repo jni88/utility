@@ -4,7 +4,8 @@
 #include <stdio.h>
 #include "jnu_defines.h"
 
-#define JNU_UT_MSG_A(D, F, ...) printf("%*s" F "\n", D, "", ##__VA_ARGS__)
+#define JNU_UT_MSG_A(D, F, ...) printf("%*s" F "\n", \
+                                       D, "", ##__VA_ARGS__)
 #define JNU_UT_MSG(D, F) JNU_UT_MSG_A(D, "%s", F)
 
 #define JNU_UT_OUTPUT_A(D, L, F, ...) JNU_UT_MSG_A(\
