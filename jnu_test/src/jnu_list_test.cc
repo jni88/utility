@@ -3,21 +3,28 @@
 
 using namespace jnu_test;
 
+struct Item;
+typedef jnu::SLink<Item> SLink;
 struct Item {
-  Item*& Next() {
-    return m_next;
+  typedef SLink::Node Node;
+  Node& GetNode() {
+    return m_node;
   }
-  Item* m_next;
+  Node m_node;
 };
 void SListTest::Test() {
-  typedef jnu::SList<Item, &Item::Next> List;
+  typedef SLink::List<&Item::GetNode> List;
   List ls;
   Item a, b, c, d;
-  ls.InsertHead(&b);
-  ls.InsertHead(&a);
-  ls.InsertTail(&c);
-  ls.InsertTail(&d);
+  ls.InsertHead(b);
+  ls.InsertHead(a);
+  ls.InsertTail(c);
+  ls.InsertTail(d);
   JNU_UT_EQUAL(ls.Size(), 4);
+  JNU_UT_EQUAL(ls.Head(), &a);
+  JNU_UT_EQUAL(ls.Next(a), &b);
+  JNU_UT_EQUAL(ls.Next(b), &c);
+  JNU_UT_EQUAL(ls.Next(c), &d);
 }
 void ListTest::Test() {
   Run<SListTest>("single list");
