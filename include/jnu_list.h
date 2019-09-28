@@ -60,6 +60,7 @@ public:
         *this = s;
         s.Clear();
       }
+      return *this;
     }
     void Clear() {
       m_size = 0;
@@ -67,7 +68,7 @@ public:
       m_tail = NULL;
     }
     bool IsEmpty() const {
-      return m_size != 0;
+      return m_size == 0;
     }
     operator bool() const {
       return !IsEmpty();
@@ -123,9 +124,72 @@ public:
       }
       return false;
     }
+    C* DeleteHead() {
+      C* head = m_head;
+      if (head) {
+        DeleteHead(*head);
+        --m_size;
+      }
+      return head;
+    }
+    List DeleteHeadTill(C& e) {
+      List ls;
+      ls.m_head = m_head;
+      ls.m_tail = &e;
+      ls.m_size = Count(e);
+      DeleteHead(e);
+      m_size -= ls.m_size;
+      return ls;
+    }
+    C* DeleteNext(C& obj) {
+      C* next_obj = (obj.*F)().m_next;
+      if (next_obj) {
+        DeleteNext(obj, *next_obj);
+        --m_size;
+      }
+      return next_obj;
+    }
+    List DeleteNextTill(C& obj, C& e) {
+      List ls;
+      C* next_obj = (obj.*F)().m_next;
+      ls.m_head = next_obj;
+      ls.m_tail = &e;
+      ls.m_size = Count(*next_obj, e);
+      DeleteNext(obj, e);
+      m_size -= ls.m_size;
+      return ls;
+    }
+    List DeleteNextAll(C& obj) {
+      List ls;
+      if (m_tail != &obj) {
+        return DeleteNextTill(obj, *m_tail);
+      }
+      return List();
+    }
   private:
     bool CanInsert(size_t sz) const {
       return m_size <= MAX_SZ - sz;
+    }
+    size_t Count(C& e) {
+      if (&e == m_tail) {
+        return m_size;
+      }
+      return DoCount(*m_head, e);
+    }
+    size_t Count(C& s, C& e) {
+      if (&s == m_head && &e == m_tail) {
+        return m_size;
+      }
+      return DoCount(s, e);
+    }
+    size_t DoCount(C& s, C& e) {
+      size_t count = 1;
+      C* t = &s;
+      while (t != &e) {
+        ++count;
+        t = (t->*F)().m_next;
+      }
+      return count;
     }
     bool InsertHead(C& s, C& e, size_t sz) {
       if (CanInsert(sz)) {
@@ -158,11 +222,22 @@ public:
         (obj.*F)().m_next = &s;
         if (m_tail == &obj) {
           m_tail = &e;
-          m_size += sz;
         }
+        m_size += sz;
         return true;
       }
       return false;
+    }
+    void DeleteHead(C& e) {
+      m_head = (e.*F)().m_next;
+      (e.*F)().m_next = NULL;
+    }
+    void DeleteNext(C& obj, C& e) {
+      (obj.*F)().m_next = (e.*F)().m_next;
+      (e.*F)().m_next = NULL;
+      if (m_tail == &e) {
+        m_tail = &obj;
+      }
     }
     size_t m_size;
     C* m_head;
