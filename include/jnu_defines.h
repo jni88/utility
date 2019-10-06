@@ -11,4 +11,11 @@
 // Define of Mod operation
 #define JNU_MOD(X, Y) ((X) - (X) / (Y) * (Y))
 
+// Define of pow_2 operations
+#define JNU_IS_POW_2(X) ((((X) - 1) & (X)) == 0)
+#define JNU_POW_2(X) (1 << (X))
+
+// Get size of pointer
+#define JNU_PTR_SZ sizeof(void*)
+
 #endif
