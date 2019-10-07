@@ -27,41 +27,6 @@ class MMBase {
 public:
   virtual void* Malloc(const Align& al, size_t sz) = 0;
   virtual void Free(void* ptr) = 0;
-  template<typename T, typename... TA>
-  T* New(const Align& al, TA... arg) {
-    if (void* ptr = Malloc(al, sizeof(T))) {
-      return ::new (ptr) T(arg...);
-    }
-    return NULL;
-  }
-  template<typename T, typename... TA>
-  T* NewArr(const Align& al, size_t cnt, TA... arg) {
-    if (cnt) {
-      size_t sz = cnt * sizeof(T);
-      if (sz / cnt == sizeof(T)) {
-        if (void* ptr = Malloc(al, sz)) {
-          return ::new (ptr) T[cnt](arg...);
-        }
-      }
-      return NULL;
-    }
-  }
-  template<typename T>
-  void Delete(T* t) {
-    if (t) {
-      t->~T();
-      Free(t);
-    }
-  }
-  template<typename T>
-  void DeleteArr(T* t, size_t cnt) {
-    if (t) {
-      for (size_t i = 0; i < cnt; ++i) {
-        t[i].~T();
-      }
-      Free(t);
-    }
-  }
 protected:
   MMBase() {}
   virtual ~MMBase() {}
@@ -159,28 +124,23 @@ public:
 };
 typedef MM<Buildin> MMBuildin;
 typedef MM<Custom<CustomDef>> MMCustomDef;
-class MRec {
+class Mem {
 public:
-  MRec() {
+  Mem(MMBase* mm = NULL)
+    : m_mm (mm) {
     Reset();
   }
-  ~MRec() {
+  ~Mem() {
     Free();
   }
-  MRec(const MRec& r) = delete;
-  MRec& operator=(const MRec& r) = delete;
-  MRec(MRec& r) {
+  Mem(const Mem& r) = delete;
+  Mem& operator=(const Mem& r) = delete;
+  Mem(Mem&& r) {
     Reset();
-    *this = (MRec&) r;
+    Move(r);
   }
-  MRec& operator=(MRec& r) {
-    if (this != &r) {
-      Free();
-      m_mm = r.m_mm;
-      m_ptr = r.m_ptr;
-      m_sz = r.m_sz;
-      r.Reset();
-    }
+  Mem& operator=(Mem&& r) {
+    Move(r);
     return *this;
   }
   operator bool() const {
@@ -211,19 +171,23 @@ public:
     }
     return false;
   }
+  bool Malloc(const Align& al, size_t sz) {
+    return Malloc(m_mm, al, sz);
+  }
   bool Calloc(MMBase* mm, const Align& al, size_t n, size_t sz) {
     if (!n || !sz) {
       Free();
       return true;
     }
     size_t mem_sz = n * sz;
-    if ((mem_sz / sz) == n) {
-      if (Malloc(mm, al, mem_sz)) {
-        memset(m_ptr, 0, mem_sz);
-        return true;
-      }
+    if ((mem_sz / sz) == n && Malloc(mm, al, mem_sz)) {
+      memset(m_ptr, 0, mem_sz);
+      return true;
     }
     return false;
+  }
+  bool Calloc(const Align& al, size_t n, size_t sz) {
+    return Calloc(m_mm, al, n, sz);
   }
   bool Realloc(MMBase* mm, const Align& al, size_t sz) {
     if (!sz) {
@@ -234,28 +198,157 @@ public:
       m_sz = sz;
       return true;
     }
-    MRec r;
-    if (r.Malloc(mm, al, sz)) {
+    Mem r(mm);
+    if (r.Malloc(al, sz)) {
       memcpy(r.m_ptr, m_ptr, m_sz);
-      *this = r;
+      Move(r);
       return true;
     }
     return false;
   }
   void Free() {
-    if (m_mm) {
+    if (m_ptr) {
       m_mm->Free(m_ptr);
       Reset();
     }
   }
+  bool Realloc(const Align& al, size_t sz) {
+    return Realloc(m_mm, al, sz);
+  }
+protected:
+  MMBase* GetMM() const {
+    return m_mm;
+  }
+  void Move(Mem& r) {
+    if (this != &r) {
+      Free();
+      m_mm = r.m_mm;
+      m_ptr = r.m_ptr;
+      m_sz = r.m_sz;
+      r.Reset();
+    }
+  }
 private:
   void Reset() {
-    m_mm = NULL;
     m_ptr = NULL;
     m_sz = 0;
   }
   MMBase* m_mm;
   void* m_ptr;
+  size_t m_sz;
+};
+template<typename C>
+class Obj : private Mem {
+public:
+  Obj(MMBase* mm = NULL)
+    : Mem (mm) {
+    Reset();
+  }
+  ~Obj() {
+    Finalize();
+  }
+  Obj(const Obj& o) = delete;
+  Obj& operator=(const Obj& o) = delete;
+  Obj(Obj&& o) {
+    Reset();
+    Move(o);
+  }
+  Obj& operator=(Obj&& o) {
+    Move(o);
+    return *this;
+  }
+  operator bool() const {
+    return Size() > 0;
+  }
+  C* Ptr() const {
+    return (C*)Mem::Ptr();
+  }
+  size_t Size() const {
+    return m_sz;
+  }
+  bool IsAligned(const Align& al) const {
+    return Mem::IsAligned(al);
+  }
+  template<typename... A>
+  bool New(MMBase* mm, const Align& al, A... arg) {
+    Obj t(mm, 1);
+    if (t.Malloc(al, sizeof(C))) {
+      ::new (t.Ptr()) C(arg...);
+      Move(t);
+      return true;
+    }
+    return false;
+  }
+  template<typename... A>
+  bool New(const Align& al, A... arg) {
+    return New(Mem::GetMM(), al, arg...);
+  }
+  bool NewArr(MMBase* mm, const Align& al, size_t sz) {
+    if (DoNewArr(mm, al, sz)) {
+      ::new (Ptr()) C[sz];
+      return true;
+    }
+    return false;
+  }
+  bool NewArr(const Align& al, size_t sz) {
+    return NewArr(Mem::GetMM(), al, sz);
+  }
+  template<typename... A>
+  bool NewArr(MMBase* mm, const Align& al, size_t sz, A... arg) {
+    if (DoNewArr(mm, al, sz)) {
+      for (size_t i = 0; i < sz; ++i) {
+        ::new (Ptr() + i) C(arg...);
+      }
+      return true;
+    }
+    return false;
+  }
+  template<typename... A>
+  bool NewArr(const Align& al, size_t sz, A... arg) {
+    return NewArr(Mem::GetMM(), al, sz, arg...);
+  }
+  void Delete() {
+    Finalize();
+    Mem::Free();
+  }
+private:
+  Obj(MMBase* mm, size_t sz)
+    : Mem (mm),
+      m_sz (sz) {
+  }
+  void Move(Obj& o) {
+    if (this != &o) {
+      Finalize();
+      Mem::Move(o);
+      m_sz = o.m_sz;
+      o.Reset();
+    }
+  }
+  void Reset() {
+    m_sz = 0;
+  }
+  void Finalize() {
+    size_t sz = m_sz;
+    if (sz) {
+      Ptr()->~C();
+      for (size_t i = 1; i < sz; ++i) {
+        Ptr()[i].~C();
+      }
+    }
+  }
+  bool DoNewArr(MMBase* mm, const Align& al, size_t sz) {
+    if (!sz) {
+      Delete();
+      return true;
+    }
+    Obj t(mm, sz);
+    size_t mem_sz = sz * sizeof(C);
+    if (mem_sz / sz == sizeof(C) && t.Malloc(al, mem_sz)) {
+      Move(t);
+      return true;
+    }
+    return false;
+  }
   size_t m_sz;
 };
 }
