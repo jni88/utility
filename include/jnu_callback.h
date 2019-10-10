@@ -4,7 +4,6 @@
 #include <type_traits>
 
 namespace jnu {
-namespace callback {
 template<typename T>
 class Callback {
   template<typename R>
@@ -33,12 +32,11 @@ public:
     return !(*this == c);
   }
   operator bool() const {
-    return (bool) m_obj;
+    return m_obj;
   }
   template<typename... A>
   NoVoid<RType<A...>>
-  operator()(const NoVoid<RType<A...>> & d,
-             A... arg) {
+  operator()(const NoVoid<RType<A...>> & d, A... arg) {
     if (*this) {
       return m_obj(arg...);
     }
@@ -57,72 +55,39 @@ private:
   T m_obj;
 };
 template<typename R, typename... H>
-class Func {
-public:
-  typedef R(*Type)(H...);
-  typedef R RType;
-  Func(const Type& func = NULL)
-    : m_func (func) {
-  }
-  ~Func() {
-  }
-  Func(const Func& f) {
-    *this = f;
-  }
-  Func& operator=(const Func& f) {
-    m_func = f.m_func;
-    return *this;
-  }
-  bool operator==(const Func& f) const {
-    return m_func == f.m_func;
-  }
-  bool operator!=(const Func& f) const {
-    return !(*this == f);
-  }
-  operator bool() const {
-    return m_func != NULL;
-  }
-  R operator()(H... arg) {
-    return (*m_func)(arg...);
-  }
-  const Type& Get() const {
-    return m_func;
-  }
-private:
-  Type m_func;
-};
+using Func = R(*)(H...);
 template<typename R, typename A, typename... H>
-class FuncA {
+class FuncArg {
 public:
   typedef Func<R, A&, H...> FType;
   typedef A AType;
-  typedef R RType;
-  typedef typename FType::Type Type;
-  FuncA(const Type& func = NULL)
+  FuncArg() {
+  }
+  FuncArg(const FType& func)
     : m_func (func) {
   }
-  FuncA(const Type& func, const A& arg)
+  FuncArg(const FType& func, const A& arg)
     : m_func (func),
       m_arg (arg) {
   }
-  ~FuncA() {
+  ~FuncArg() {
   }
-  FuncA(const FuncA& f) {
+  FuncArg(const FuncArg& f) {
     *this = f;
   }
-  FuncA& operator=(const FuncA& f) {
+  FuncArg& operator=(const FuncArg& f) {
     m_func = f.m_func;
     m_arg = f.m_arg;
     return *this;
   }
-  bool operator==(const FuncA& f) const {
+  bool operator==(const FuncArg& f) const {
     return m_func == f.m_func && m_arg == f.m_arg;
   }
-  bool operator!=(const FuncA& f) const {
+  bool operator!=(const FuncArg& f) const {
     return !(*this == f);
   }
   operator bool() const {
-    return m_func == true;
+    return m_func;
   }
   R operator()(H... arg) {
     return m_func(m_arg, arg...);
@@ -137,7 +102,67 @@ private:
   FType m_func;
   A m_arg;
 };
-}
+template<typename C, typename R, typename... H>
+class FuncObj {
+  template<typename T>
+  using GetType = typename std::remove_pointer<T>::type;
+  template<typename T>
+  using Obj = typename std::enable_if
+              <std::is_same<GetType<T>, T>::value, T>::type;
+  template<typename T>
+  using Ptr = typename std::enable_if
+              <!std::is_same<GetType<T>, T>::value, T>::type;
+public:
+  typedef C OType;
+  typedef R(GetType<C>::*FType)(H...);
+  const static bool NOT_POINTER = std::is_same<C, OType>::value;
+  FuncObj()
+    : m_func (NULL) {
+  }
+  FuncObj(const C& obj, const FType& func)
+    : m_obj (obj),
+      m_func (func) {
+  }
+  ~FuncObj() {
+  }
+  FuncObj(const FuncObj& o) {
+    *this = o;
+  }
+  FuncObj& operator=(const FuncObj& o) {
+    m_obj = o.m_obj;
+    m_func = o.m_func;
+    return *this;
+  }
+  bool operator==(const FuncObj& o) const {
+    return m_obj == o.m_obj && m_func == o.m_func;
+  }
+  bool operator!=(const FuncObj& o) const {
+    return !(*this == o);
+  }
+  operator bool() const {
+    return m_obj && m_func;
+  }
+  template<typename T>
+  R Exec(Obj<T>& obj, H... arg) {
+    return (obj.*m_func)(arg...);
+  }
+  template<typename T>
+  R Exec(Ptr<T> obj, H... arg) {
+    return (obj->*m_func)(arg...);
+  }
+  R operator()(H... arg) {
+    return Exec<C>(m_obj, arg...);
+  }
+  const C& GetObj() const {
+    return m_obj;
+  }
+  const FType& GetFunc() const {
+    return m_func;
+  }
+private:
+  C m_obj;
+  FType m_func;
+};
 }
 
 #endif
