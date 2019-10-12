@@ -165,8 +165,16 @@ public:
   const FType& GetFunc() const {
     return m_func;
   }
+  // Set underline function
+  FType& GetFunc() {
+    return m_func;
+  }
   // Get underline argument
   const A& GetArg() const {
+    return m_arg;
+  }
+  // Set underline argument
+  A& GetArg() {
     return m_arg;
   }
 private:

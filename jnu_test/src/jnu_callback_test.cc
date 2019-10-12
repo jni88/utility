@@ -72,4 +72,14 @@ void CallbackTest::Test() {
   e.Get().GetObj() = &to;
   e();
   JNU_UT_CHECK(count == 8);
+  jnu::FuncObj<TestObj, int, int> functor(TestObj(), &TestObj::operator());
+  jnu::Callback<jnu::FuncObj<TestObj, int, int>>f(functor);
+  JNU_UT_CHECK(f(-1, 100) == 100 && count == 9);
+  jnu::FuncObj<TestObj*, void> fptr(NULL, &TestObj::operator());
+  jnu::Callback<jnu::FuncObj<TestObj*, void>>fp(fptr);
+  fp();
+  JNU_UT_CHECK(count == 9);
+  fp.Get().GetObj() = &to;
+  fp();
+  JNU_UT_CHECK(count == 10);
 }
