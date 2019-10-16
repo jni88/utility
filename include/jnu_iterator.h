@@ -39,12 +39,6 @@ public:
   bool operator<=(const T& it) const {
     return m_it <= it;
   }
-  Iterator operator+(const T& it) const {
-    return Iterator(m_it + it);
-  }
-  Iterator operator-(const T& it) const {
-    return Iterator(m_it - it);
-  }
   Iterator& operator+=(const T& it) {
     m_it += it;
     return *this;
@@ -67,6 +61,14 @@ public:
   }
   operator T() const {
     return m_it;
+  }
+  template<typename C>
+  Iterator operator+(const C& b) const {
+    return Iterator(m_it + (const T&) b);
+  }
+  template<typename C>
+  Iterator operator-(const T& b) const {
+    return Iterator(m_it - (const T&) b);
   }
 private:
   T m_it;

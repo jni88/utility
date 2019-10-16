@@ -9,8 +9,7 @@ namespace jnu {
 class ARR_MEM_ALLOC {
 public:
   template<typename T>
-  static T* Initialize(void* ptr, size_t sz) {
-    return (T*) ptr;
+  static void Initialize(T* ptr, size_t sz) {
   }
   template<typename T>
   static void Destroy(T* ptr, size_t sz) {
@@ -29,8 +28,8 @@ private:
 class ARR_OBJ_ALLOC {
 public:
   template<typename T>
-  static T* Initialize(void* ptr, size_t sz) {
-    return ::new (ptr) T[sz];
+  static void Initialize(T* ptr, size_t sz) {
+    ::new (ptr) T[sz];
   }
   template<typename T>
   static void Destroy(T* ptr, size_t sz) {
@@ -68,8 +67,8 @@ private:
 class ARR_OBJ_MV_ALLOC {
 public:
   template<typename T>
-  static T* Initialize(void* ptr, size_t sz) {
-    return ARR_OBJ_ALLOC::Initialize<T>(ptr, sz);
+  static void Initialize(void* ptr, size_t sz) {
+    ARR_OBJ_ALLOC::Initialize<T>(ptr, sz);
   }
   template<typename T>
   static void Destroy(T* ptr, size_t sz) {
@@ -86,77 +85,80 @@ public:
 private:
   ARR_OBJ_MV_ALLOC() {}
 };
-template<typename T, typename A, memory::Align AL>
-class ArrayHelp {
+template<typename C, typename A>
+class ArrayImp : private C {
+  typedef typename C::Type T;
 public:
-  const static size_t TYPE_SZ = sizeof(T);
-  const static size_t MAX_SZ = (size_t)(-1);
   typedef T Type;
   typedef Iterator<size_t> Iter;
-  static void Copy(T* dst, size_t& d_sz,
-                   const T* src, size_t s_sz) {
-    A::Copy(dst, src, s_sz);
-    if (s_sz < d_sz) {
-      A::Destroy(dst + s_sz, d_sz - s_sz);
-    }
-    d_sz = s_sz;
-  }
-  static void Move(T* dst, size_t& d_sz,
-                   T* src, size_t s_sz) {
-    A::Move(dst, src, s_sz);
-    if (s_sz < d_sz) {
-      A::Destroy(dst + s_sz, d_sz - s_sz);
-    }
-    d_sz = s_sz;
-  }
-};
-template<typename T, size_t S,
-         typename A = ARR_MEM_ALLOC,
-         memory::Align AL = 8>
-class ArrayS : public ArrayHelp <T, A, AL> {
-  typedef ArrayHelp <T, A, AL> Help;
-public:
-  ArrayS()
+  constexpr static size_t MAX_SZ = -1;
+  constexpr static size_t NO_POS = MAX_SZ;
+  ArrayImp(size_t rsv_sz = 0)
     : m_sz (0) {
+    Reserve(rsv_sz);
   }
-  ArrayS(const T* arr, size_t sz)
+  ~ArrayImp() {
+    Clear();
+  }
+  ArrayImp(const T* arr, size_t sz)
     : m_sz (0) {
     Copy(arr, sz);
   }
-  ArrayS(const ArrayS& arr) {
+  ArrayImp(const ArrayImp& arr) {
     *this = arr;
   }
-  ArrayS(ArrayS&& arr) {
+  ArrayImp(ArrayImp&& arr) {
     *this = std::move(arr);
   }
-  template<typename C>
-  ArrayS& operator=(const C& arr) {
+  template<typename H>
+  ArrayImp& operator=(const H& arr) {
     Copy(arr.Data(), arr.Size());
     return *this;
   }
-  ArrayS& operator=(const ArrayS& arr) {
-    return operator=<ArrayS>((const ArrayS&)arr);
+  ArrayImp& operator=(const ArrayImp& arr) {
+    return operator=<ArrayImp>((const ArrayImp&)arr);
+  }
+  bool Reserve(size_t rsv_sz) {
+    return C::Reserve(rsv_sz);
   }
   bool Copy(const T* arr, size_t sz) {
-    if (arr && sz <= S) {
-      Help::Copy(m_data, m_sz, arr, sz);
-      return true;
+    if (!arr) {
+      sz = 0;
     }
-    return false;
+    if (Data() != arr) {
+      if (!Reserve(sz)) {
+        return false;
+      }
+      A::Copy(Data(), arr, sz);
+    }
+    if (sz < m_sz) {
+      A::Destroy(Data() + sz, m_sz - sz);
+    }
+    m_sz = sz;
+    return true;
   }
-  ArrayS& operator=(ArrayS&& arr) {
+  ArrayImp& operator=(ArrayImp&& arr) {
     Move(arr);
     return *this;
   }
   bool Move(T* arr, size_t sz) {
-    if (arr && sz <= S) {
-      Help::Move(m_data, m_sz, arr, sz);
-      return true;
+    if (!arr) {
+      sz = 0;
     }
-    return false;
+    if (Data() != arr) {
+      if (!Reserve(sz)) {
+        return false;
+      }
+      A::Move(Data(), arr, sz);
+    }
+    if (sz < m_sz) {
+      A::Destroy(Data() + sz, m_sz - sz);
+    }
+    m_sz = sz;
+    return true;
   }
-  template<typename C>
-  bool Move(C& arr) {
+  template<typename H>
+  bool Move(H& arr) {
     bool res = false;
     if (this != &arr) {
       res = Move(arr.Data(), arr.Size());
@@ -165,21 +167,100 @@ public:
     return res;
   }
   const T* Data() const {
-    return m_data;
+    return C::Data();
   }
   T* Data() {
-    return m_data;
+    return C::Data();
   }
   size_t Size() const {
     return m_sz;
   }
+  operator bool() const {
+    return m_sz;
+  }
   void Clear() {
-    A::Destroy(m_data, m_sz);
+    A::Destroy(Data(), m_sz);
+    m_sz = 0;
+  }
+  Iter Expand(const Iter& p, size_t t_sz) {
+    size_t start = p < m_sz ? (size_t) p : m_sz;
+    if (t_sz) {
+      size_t sz = m_sz;
+      size_t new_sz = sz + t_sz;
+      if (new_sz <= sz || !C::Reserve(new_sz)) {
+        return Iter(NO_POS);
+      }
+      A::Initialize(Data() + sz, t_sz);
+      A::Copy(Data() + start + t_sz, Data() + start, sz - start);
+      m_sz = new_sz;
+    }
+    return Iter(start);
+  }
+  bool Insert(const Iter& p, const T& t, size_t t_sz) {
+    Iter start = Expand(p, t_sz);
+    if (start != NO_POS) {
+      for (size_t i = start; i < start + t_sz; ++i) {
+        Data()[i] = t;
+      }
+      return true;
+    }
+    return false;
+  }
+  bool Insert(const Iter& p, const T* t, size_t t_sz) {
+    Iter start = Expand(p, t_sz);
+    if (start != NO_POS) {
+      A::Copy(Data() + start, t, t_sz);
+      return true;
+    }
+    return false;
+  }
+  template<typename H>
+  bool Insert(const Iter& p, const H& t) {
+    return Insert(p, t.Data(), t.Size());
+  }
+  bool Inject(const Iter& p, T* t, size_t t_sz) {
+    Iter start = Expand(p, t_sz);
+    if (start != NO_POS) {
+      A::Move(Data() + start, t, t_sz);
+      return true;
+    }
+    return false;
+  }
+  template<typename H>
+  bool Inject(const Iter& p, const H& t) {
+    if (Inject(p, t.Data(), t.Size())) {
+      t.Clear();
+      return true;
+    }
+    return false;
+  }
+  static Iter Begin() {
+    return Iter(0);
+  }
+  Iter End() const {
+    return Iter(m_sz);
   }
 private:
   size_t m_sz;
-  T m_data[S];
+  T m_data;
 };
+template<typename T, size_t S>
+class StaticArr {
+  template<typename C, typename A> friend class ArrayImp;
+  typedef T Type;
+  T* Data() {
+    return (T*) m_data;
+  }
+  const T* Data() const {
+    return (T*) m_data;
+  }
+  bool Reserve(size_t rsv_sz) {
+    return rsv_sz <= S;
+  }
+  char m_data[S * sizeof(T)];
+};
+template<typename T, size_t S, typename A>
+using ArrayS = ArrayImp<StaticArr<T, S>, A>;
 }
 
 #endif
