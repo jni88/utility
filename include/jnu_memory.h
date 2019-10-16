@@ -181,8 +181,13 @@ public:
 };
 // Buildin memory manage
 typedef MM<Buildin> MMBuildin;
+// Global instaince of buildin memory manage
+static MMBuildin MM_BUILDIN;
 // Default custom memory manage
 typedef MM<Custom<CustomDef>> MMCustomDef;
+// Global instaince of default custom memory manage
+static MMCustomDef MM_CUSTOM_DEF;
+
 // Memory object (unique), it maintains allocated memory
 // automatically deallocate it when finishing using
 // it

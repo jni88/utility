@@ -8,7 +8,8 @@ using namespace jnu_test;
 
 // Test of buildin methods
 void MMTest::TestBuildin() {
-  jnu::memory::MMBuildin mm;  // Buildin interface
+  // Buildin interface
+  jnu::memory::MMBase& mm = jnu::memory::MM_BUILDIN;
   jnu::memory::Mem r(&mm);  // Memory record
   JNU_UT_CHECK(r.Malloc(0, 0) && !r);  // Empty memory
   JNU_UT_CHECK(!r.Malloc(3, 100));  // Invalid alignment
@@ -30,7 +31,8 @@ struct ObjTest {
 };
 // Test of custom interface
 void MMTest::TestCustom() {
-  jnu::memory::MMCustomDef mm;  // Custom interface
+  // Custom interface
+  jnu::memory::MMBase& mm = jnu::memory::MM_CUSTOM_DEF;
   jnu::memory::Mem r(&mm);  // Memory record
   // Test Malloc
   JNU_UT_CHECK(r.Malloc(0, 0) && !r);

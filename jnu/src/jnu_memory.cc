@@ -7,3 +7,8 @@
 using namespace jnu;
 using namespace memory;
 
+// Global instance of buildin memory manage
+MMBuildin MM_BUILDIN;
+// Global instance of default custom manage
+MMCustomDef MM_CUSTOM_DEF;
+
