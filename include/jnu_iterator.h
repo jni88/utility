@@ -2,11 +2,12 @@
 #define JNU_ITERATOR_H
 
 namespace jnu {
-template<typename T>
+template<typename T, T INV>
 class Iterator {
 public:
   typedef T Type;
-  Iterator() {
+  Iterator()
+    : m_it (INV) {
   }
   Iterator(const T& it)
     : m_it (it) {
@@ -21,31 +22,50 @@ public:
   Iterator& operator=(const Iterator& it) {
     return *this = it.m_it;
   }
-  bool operator==(const T& it) const {
-    return m_it == it;
+  operator bool() const {
+    return m_it != INV;
   }
-  bool operator!=(const T& it) const {
-    return !(*this == it);
+  template<typename C>
+  bool operator==(const C& c) const {
+    return m_it == c;
   }
-  bool operator>(const T& it) const {
-    return m_it > it;
+  template<typename C>
+  bool operator!=(const C& c) const {
+    return m_it != c;
   }
-  bool operator<(const T& it) const {
-    return m_it < it;
+  template<typename C>
+  bool operator>(const C& c) const {
+    return m_it > c;
   }
-  bool operator>=(const T& it) const {
-    return m_it >= it;
+  template<typename C>
+  bool operator<(const C& c) const {
+    return m_it < c;
   }
-  bool operator<=(const T& it) const {
-    return m_it <= it;
+  template<typename C>
+  bool operator>=(const C& c) const {
+    return m_it >= c;
   }
-  Iterator& operator+=(const T& it) {
-    m_it += it;
+  template<typename C>
+  bool operator<=(const C& c) const {
+    return m_it <= c;
+  }
+  template<typename C>
+  Iterator& operator+=(const C& c) {
+    m_it += c;
     return *this;
   }
-  Iterator& operator-=(const T& it) {
-    m_it -= it;
+  template<typename C>
+  Iterator& operator-=(const C& c) {
+    m_it -= c;
     return *this;
+  }
+  template<typename C>
+  Iterator operator+(const C& c) const {
+    return Iterator(m_it + c);
+  }
+  template<typename C>
+  Iterator operator-(const C& c) const {
+    return Iterator(m_it - c);
   }
   Iterator& operator++() {
     return *this += 1;
@@ -61,14 +81,6 @@ public:
   }
   operator T() const {
     return m_it;
-  }
-  template<typename C>
-  Iterator operator+(const C& b) const {
-    return Iterator(m_it + (const T&) b);
-  }
-  template<typename C>
-  Iterator operator-(const T& b) const {
-    return Iterator(m_it - (const T&) b);
   }
 private:
   T m_it;
