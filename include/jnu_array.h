@@ -2,6 +2,7 @@
 #define JNU_ARRAY_H
 
 #include <utility>
+#include "jnu_defines.h"
 #include "jnu_memory.h"
 #include "jnu_iterator.h"
 
@@ -121,11 +122,14 @@ public:
     return operator=<ArrayImp>((const ArrayImp&)arr);
   }
   bool Reserve(size_t rsv_sz) {
-    return C::Reserve(rsv_sz);
+    return C::Reserve(m_sz, rsv_sz);
   }
   void Free() {
     Clear();
-    C::Free();
+    C::FreeTill(0);
+  }
+  bool Recycle() {
+    return C::FreeTill(m_sz);
   }
   bool Copy(const T* arr, size_t sz) {
     if (!arr || !sz) {
@@ -152,8 +156,7 @@ public:
     if (this == &arr) {
       return true;
     }
-    if (C::Move(arr, m_sz, arr.m_sz)) {
-      m_sz = arr.m_sz;
+    if (C::Move(m_sz, arr, arr.m_sz)) {
       arr.Clear();
       return true;
     }
@@ -205,7 +208,7 @@ public:
     T* pos = Adjust(p);
     size_t sz = m_sz;
     size_t new_sz = sz + t_sz;
-    if (new_sz < sz || !C::Reserve(new_sz)) {
+    if (new_sz < sz || !Reserve(new_sz)) {
       return Iter();
     }
     T* end = End();
@@ -327,7 +330,39 @@ protected:
   typedef A Alloc;
   SArrayDef(memory::MMBase* mm) {
   }
-  ~SArrayDef() {
+  T* Data() {
+    return (T*) m_data;
+  }
+  const T* Data() const {
+    return (T*) m_data;
+  }
+  bool Reserve(size_t sz, size_t rsv_sz) {
+    return rsv_sz <= S;
+  }
+  bool FreeTill(size_t sz) {
+    return false;
+  }
+  bool Move(size_t& sz, SArrayDef& arr, size_t& a_sz) {
+    A::Move(Data(), arr.Data(), a_sz);
+    if (a_sz < sz) {
+      A::Destroy(Data() + a_sz, sz - a_sz);
+    }
+    sz = a_sz;
+    return true;
+  }
+private:
+  char m_data[S * sizeof(T)];
+};
+template<typename T, typename A, size_t R, memory::Align AL>
+class DArrayDef {
+  const static size_t ROUND = R ? R : 1;
+protected:
+  typedef T Type;
+  typedef A Alloc;
+  DArrayDef(memory::MMBase* mm)
+    : m_data (NULL),
+      m_mem_sz (0),
+      m_mm (mm) {
   }
   T* Data() {
     return (T*) m_data;
@@ -335,20 +370,78 @@ protected:
   const T* Data() const {
     return (T*) m_data;
   }
-  bool Reserve(size_t rsv_sz) {
-    return rsv_sz <= S;
-  }
-  void Free() {
-  }  
-  bool Move(SArrayDef& arr, size_t o_sz, size_t n_sz) {
-    A::Move(Data(), arr.Data(), n_sz);
-    if (n_sz < o_sz) {
-      A::Destroy(Data() + n_sz, o_sz - n_sz);
+  bool Reserve(size_t sz, size_t rsv_sz) {
+    if (rsv_sz <= m_mem_sz) {
+      return true;
     }
+    if (!m_mm) {
+      return false;
+    }
+    size_t n_sz = rsv_sz * sizeof(T);
+    if (n_sz / rsv_sz != sizeof(T)) {
+      return false;
+    }
+    size_t r_sz = Round(n_sz);
+    void* ptr = m_mm->Malloc(AL, r_sz);
+    if (!ptr) {
+      if (r_sz <= n_sz) {
+        return false;
+      }
+      r_sz = n_sz;
+      ptr = m_mm->Malloc(AL, r_sz);
+      if (!ptr) {
+        return false;
+      }
+    }
+    A::Initialize(ptr, sz);
+    A::Move(ptr, m_data, sz);
+    A::Destroy(m_data, sz);
+    m_mm->Free(m_data);
+    m_data = ptr;
+    m_mem_sz = r_sz;
+    return true;
+  }
+  bool FreeTill(size_t sz) {
+    if (sz >= m_mem_sz) {
+      return true;
+    }
+    if (!sz) {
+      m_mm->Free(m_data);
+      m_data = NULL;
+      m_mem_sz = 0;
+      return true;
+    }
+    if (void* ptr = m_mm->Malloc(AL, sz)) {
+      A::Move(ptr, m_data, sz);
+      A::Destroy(m_data, sz);
+      m_mm->Free(m_data);
+      m_data = ptr;
+      m_mem_sz = sz;
+      return true;
+    }
+    return false;
+  }
+  bool Move(size_t& sz, DArrayDef& arr, size_t& a_sz) {
+    m_data = arr.m_data;
+    m_mem_sz = arr.m_mem_sz;
+    m_mm = arr.m_mm;
+    sz = a_sz;
+    arr.m_data = NULL;
+    arr.m_mem_sz = 0;
+    a_sz = 0;
     return true;
   }
 private:
-  char m_data[S * sizeof(T)];
+  size_t Round(size_t sz) {
+    if (size_t r = JNU_MOD(sz, ROUND)) {
+      size_t n_sz = ROUND - r + sz;
+      sz = JNU_MAX(n_sz, sz);
+    }
+    return sz;
+  }
+  void* m_data;
+  size_t m_mem_sz;
+  memory::MMBase* m_mm;
 };
 template<typename T, size_t S, typename A>
 using SArray = ArrayImp<SArrayDef<T, S, A>>;

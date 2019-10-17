@@ -10,6 +10,8 @@
 
 // Define of Mod operation
 #define JNU_MOD(X, Y) ((X) - (X) / (Y) * (Y))
+#define JNU_MAX(X, Y) ((X) > (Y) ? (X) : (Y))
+#define JNU_MIN(X, Y) ((Y) > (X) ? (X) : (Y))
 
 // Define of pow_2 operations
 #define JNU_IS_POW_2(X) ((((X) - 1) & (X)) == 0)
