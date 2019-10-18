@@ -205,12 +205,12 @@ public:
     m_sz = 0;
   }
   Iter Expand(const Iter& p, size_t t_sz) {
-    T* pos = Adjust(p);
     size_t sz = m_sz;
     size_t new_sz = sz + t_sz;
     if (new_sz < sz || !Reserve(new_sz)) {
       return Iter();
     }
+    T* pos = Adjust(p);
     T* end = End();
     A::Initialize(end, t_sz);
     A::Move(pos + t_sz, pos, end - pos);
@@ -365,10 +365,10 @@ protected:
       m_mm (mm) {
   }
   T* Data() {
-    return (T*) m_data;
+    return m_data;
   }
   const T* Data() const {
-    return (T*) m_data;
+    return m_data;
   }
   bool Reserve(size_t sz, size_t rsv_sz) {
     if (rsv_sz <= m_mem_sz) {
@@ -382,13 +382,13 @@ protected:
       return false;
     }
     size_t r_sz = Round(n_sz);
-    void* ptr = m_mm->Malloc(AL, r_sz);
+    T* ptr = (T*)m_mm->Malloc(AL, r_sz);
     if (!ptr) {
       if (r_sz <= n_sz) {
         return false;
       }
       r_sz = n_sz;
-      ptr = m_mm->Malloc(AL, r_sz);
+      ptr = (T*)m_mm->Malloc(AL, r_sz);
       if (!ptr) {
         return false;
       }
@@ -411,7 +411,7 @@ protected:
       m_mem_sz = 0;
       return true;
     }
-    if (void* ptr = m_mm->Malloc(AL, sz)) {
+    if (T* ptr = (T*)m_mm->Malloc(AL, sz)) {
       A::Move(ptr, m_data, sz);
       A::Destroy(m_data, sz);
       m_mm->Free(m_data);
@@ -439,12 +439,14 @@ private:
     }
     return sz;
   }
-  void* m_data;
+  T* m_data;
   size_t m_mem_sz;
   memory::MMBase* m_mm;
 };
 template<typename T, size_t S, typename A>
 using SArray = ArrayImp<SArrayDef<T, S, A>>;
+template<typename T, typename A, size_t R, memory::Align AL = 8>
+using DArray = ArrayImp<DArrayDef<T, A, R, AL>>;
 }
 
 #endif
