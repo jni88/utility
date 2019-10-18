@@ -343,10 +343,12 @@ protected:
     return false;
   }
   bool Move(size_t& sz, SArrayDef& arr, size_t& a_sz) {
-    A::Move(Data(), arr.Data(), a_sz);
     if (a_sz < sz) {
       A::Destroy(Data() + a_sz, sz - a_sz);
+    } else {
+      A::Initialize(Data() + sz, a_sz - sz);
     }
+    A::Move(Data(), arr.Data(), a_sz);
     sz = a_sz;
     return true;
   }
@@ -406,12 +408,15 @@ protected:
       return true;
     }
     if (!sz) {
-      m_mm->Free(m_data);
-      m_data = NULL;
-      m_mem_sz = 0;
+      if (m_data) {
+        m_mm->Free(m_data);
+        m_data = NULL;
+        m_mem_sz = 0;
+      }
       return true;
     }
     if (T* ptr = (T*)m_mm->Malloc(AL, sz)) {
+      A::Initialize(ptr, sz);
       A::Move(ptr, m_data, sz);
       A::Destroy(m_data, sz);
       m_mm->Free(m_data);
@@ -422,6 +427,10 @@ protected:
     return false;
   }
   bool Move(size_t& sz, DArrayDef& arr, size_t& a_sz) {
+    if (m_data) {
+      A::Destroy(m_data, sz);
+      m_mm->Free(m_data);
+    }
     m_data = arr.m_data;
     m_mem_sz = arr.m_mem_sz;
     m_mm = arr.m_mm;
@@ -443,10 +452,73 @@ private:
   size_t m_mem_sz;
   memory::MMBase* m_mm;
 };
+template<typename T, size_t S, typename A, size_t R, memory::Align AL>
+class HArrayDef : private SArrayDef<T, S, A>,
+                  private DArrayDef<T, A, R, AL> {
+  typedef SArrayDef<T, S, A> SArr;
+  typedef DArrayDef<T, A, R, AL> DArr;
+public:
+  typedef T Type;
+  typedef A Alloc;
+  HArrayDef(memory::MMBase* mm)
+    : SArr (mm),
+      DArr (mm) {
+  }
+  T* Data() {
+    return DArr::Data() ? DArr::Data() : SArr::Data();
+  }
+  const T* Data() const {
+    return DArr::Data() ? DArr::Data() : SArr::Data();
+  }
+  bool Reserve(size_t sz, size_t rsv_sz) {
+    if (DArr::Data()) {
+      return DArr::Reserve(sz, rsv_sz);
+    }
+    if (SArr::Reserve(sz, rsv_sz)) {
+      return true;
+    }
+    if (DArr::Reserve(0, rsv_sz)) {
+      A::Initialize(DArr::Data(), sz);
+      A::Move(DArr::Data(), SArr::Data(), sz);
+      A::Destroy(SArr::Data(), sz);
+      return true;
+    }
+    return false;
+  }
+  bool FreeTill(size_t sz) {
+    if (!DArr::Data()) {
+      return SArr::FreeTill(sz);
+    }
+    if (sz > S) {
+      return DArr::FreeTill(sz);
+    }
+    A::Initialize(SArr::Data(), sz);
+    A::Move(SArr::Data(), DArr::Data(), sz);
+    return DArr::FreeTill(0);
+  }
+  bool Move(size_t& sz, HArrayDef& arr, size_t& a_sz) {
+    if (!DArr::Data()) {
+      if (!arr.DArr::Data()) {
+        return SArr::Move(sz, (SArr&) arr, a_sz);
+      }
+      A::Destroy(SArr::Data(), sz);
+      return DArr::Move(sz, (DArr&) arr, a_sz);
+    }
+    if (arr.DArr::Data()) {
+      return DArr::Move(sz, (DArr&) arr, a_sz);
+    }
+    A::Destroy(DArr::Data(), sz);
+    DArr::FreeTill(0);
+    sz = 0;
+    return SArr::Move(sz, (SArr&) arr, a_sz);
+  }
+};
 template<typename T, size_t S, typename A>
 using SArray = ArrayImp<SArrayDef<T, S, A>>;
 template<typename T, typename A, size_t R, memory::Align AL = 8>
 using DArray = ArrayImp<DArrayDef<T, A, R, AL>>;
+template<typename T, size_t S, typename A, size_t R, memory::Align AL = 8>
+using HArray = ArrayImp<HArrayDef<T, S, A, R, AL>>;
 }
 
 #endif
