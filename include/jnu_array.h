@@ -1,3 +1,10 @@
+// By JNI
+// Implement of static, dynamic and hybrid array
+// static array: allocate on stack
+// dynamic array: allocate on heap
+// hybrid array: for small size, allocate directly on stack
+//               when size grow bigger, allocate on heap
+
 #ifndef JNU_ARRAY_H
 #define JNU_ARRAY_H
 
@@ -7,110 +14,178 @@
 #include "jnu_iterator.h"
 
 namespace jnu {
+// The following defines different
+// memory/object models.
+// Each one defines:
+// Initialize - initialize memory/object
+// destroy - destroy memory/object
+// copy/move - copy or move memory/object
+// Users are responsible to choose the right one
+// for the array to achieve best performance while
+// remain correct.
+
+// Model for memory block (e.g. structs without
+// constructor or deconstructor)
 class ARR_MEM_ALLOC {
 public:
+  // Initialize memory, do nothing
   template<typename T>
   static void Initialize(T* ptr, size_t sz) {
   }
+  // Destroy memory, do nothing
   template<typename T>
   static void Destroy(T* ptr, size_t sz) {
   }
+  // Memory copy
+  // T - data type
+  // Input: dst - destination address
+  //        src - source address
+  //        sz - the size of array to copy
   template<typename T>
   static void Copy(T* dst, const T* src, size_t sz) {
-    memmove(dst, src, sz * sizeof(T));
+    memmove(dst, src, sz * sizeof(T));  // Memory move
   }
+  // Memory move (use copy)
   template<typename T>
   static void Move(T* dst, T* src, size_t sz) {
     Copy<T>(dst, src, sz);
   }
 private:
-  ARR_MEM_ALLOC() {}
+  ARR_MEM_ALLOC() {}  // Make sure static class
 };
+// Model for objects
+// Need to take care of the constructor and deconstructor
 class ARR_OBJ_ALLOC {
 public:
+  // Object initialize
+  // T - object type
+  // Input: ptr - start address
+  //        sz - array length
   template<typename T>
   static void Initialize(T* ptr, size_t sz) {
-    ::new (ptr) T[sz];
+    ::new (ptr) T[sz];  // Call object's default constructor
   }
+  // Object destroy
   template<typename T>
   static void Destroy(T* ptr, size_t sz) {
+    // For each object, call its deconstructor
     for(size_t i = 0; i < sz; ++i) {
       ptr[i].~T();
     }
   }
+  // Copy objects
+  // Input: dst - destination address
+  //        src - source address
+  //        sz - array length
   template<typename T>
   static void Copy(T* dst, const T* src, size_t sz) {
     if (src > dst) {
+      // For the case source address bigger than destination
+      // Copy from source start to source end
       for (size_t i = 0; i < sz; ++i) {
-        dst[i] = src[i];
+        dst[i] = src[i];  // Use object's assign operator
       }
     } else if (src < dst) {
+      // For the case source address smaller than destination
+      // Copy reverse order from source end to source start
       for (size_t i = sz; i > 0; --i) {
-        dst[i - 1] = src[i - 1];
+        dst[i - 1] = src[i - 1];  // Use object's assign operator
       }
     }
   }
+  // Move objects
+  // Input: dst - destination address
+  //        src - source address
+  //        sz - array length
   template<typename T>
   static void Move(T* dst, T* src, size_t sz) {
     if (src > dst) {
+      // For the case source address bigger than destination
+      // Move from source start to source end
       for (size_t i = 0; i < sz; ++i) {
-        dst[i] = std::move(src[i]);
+        dst[i] = std::move(src[i]);  // Using object's move operator
       }
     } else if (src < dst) {
+      // For the case source address smaller than destination
+      // Move reverse order from source end to source start
       for (size_t i = sz; i > 0; --i) {
-        dst[i - 1] = std::move(src[i - 1]);
+        dst[i - 1] = std::move(src[i - 1]);  // Move operator
       }
     }
   }
 private:
-  ARR_OBJ_ALLOC() {}
+  ARR_OBJ_ALLOC() {}  // Make sure static class
 };
+// Model for objects safe for memory copy or move
 class ARR_OBJ_MV_ALLOC {
 public:
+  // Object initialize, need do it properly
+  // by calling objects' constructor
   template<typename T>
-  static void Initialize(void* ptr, size_t sz) {
-    ARR_OBJ_ALLOC::Initialize<T>(ptr, sz);
+  static void Initialize(T* ptr, size_t sz) {
+    ARR_OBJ_ALLOC::Initialize(ptr, sz);
   }
+  // Object destroy, need do it properly
+  // by calling objects' deconstructor
   template<typename T>
   static void Destroy(T* ptr, size_t sz) {
-    ARR_OBJ_ALLOC::Destroy<T>(ptr, sz);
+    ARR_OBJ_ALLOC::Destroy(ptr, sz);
   }
+  // Copy object, safe to do memory copy
+  // for fast execution
   template<typename T>
   static void Copy(T* dst, const T* src, size_t sz) {
     ARR_MEM_ALLOC::Copy(dst, src, sz);
   }
+  // Move object, safe to do memory move
+  // for fast execution
   template<typename T>
   static void Move(T* dst, T* src, size_t sz) {
     ARR_MEM_ALLOC::Move(dst, src, sz);
   }
 private:
-  ARR_OBJ_MV_ALLOC() {}
+  ARR_OBJ_MV_ALLOC() {}  // Make sure static class
 };
+// Interface of array implementation
+// C - the type of array define: static, dynamic or hybrid
 template<typename C>
 class ArrayImp : private C {
-  typedef typename C::Type T;
-  typedef typename C::Alloc A;
+  typedef typename C::Type T;  // Underline element type
+  typedef typename C::Alloc A;  // Memory/object model
 public:
-  typedef T Type;
-  typedef Iterator<T*, (T*)NULL> Iter;
-  typedef Iterator<const T*, (T*)NULL> IterC;
-  ArrayImp(memory::MMBase* mm = &memory::MM_BUILDIN,
-           size_t rsv_sz = 0)
+  typedef T Type;  // Underline element type
+  typedef Iterator<T*, (T*)NULL> Iter;  // Define of iterator
+  typedef Iterator<const T*, (T*)NULL> IterC;  // Const iterator
+  // Constructor
+  // Input: mm - memory manager (for malloc and free)
+  //        rsv_sz - size of reserved memory
+  ArrayImp(size_t rsv_sz = 0,
+           memory::MMBase* mm = &memory::MM_BUILDIN)
     : C (mm),
       m_sz (0) {
-    Reserve(rsv_sz);
+    Reserve(rsv_sz);  // Reserve memory
   }
+  // Deconstructor
   ~ArrayImp() {
-    Free();
+    Free();  // Free all elements and recycle memory
   }
-  ArrayImp(const T* arr, size_t sz)
-    : m_sz (0) {
+  // Constructor with raw array input
+  // Input: arr - raw array
+  //        sz - raw array length
+  ArrayImp(const T* arr, size_t sz,
+           memory::MMBase* mm = &memory::MM_BUILDIN)
+    : C (mm),
+      m_sz (0) {
     Copy(arr, sz);
   }
-  ArrayImp(const ArrayImp& arr) {
+  ArrayImp(const ArrayImp& arr)
+    : C (arr.GetMM()),
+      m_sz (0) {
     *this = arr;
   }
-  ArrayImp(ArrayImp&& arr) {
+  ArrayImp(ArrayImp&& arr)
+    : C(arr.GetMM()),
+      m_sz (0) {
     *this = std::move(arr);
   }
   template<typename H>
@@ -121,14 +196,26 @@ public:
   ArrayImp& operator=(const ArrayImp& arr) {
     return operator=<ArrayImp>((const ArrayImp&)arr);
   }
+  // Reserve extra memory (for insert)
   bool Reserve(size_t rsv_sz) {
+    // Reserve memory, also have to tell
+    // the current array size in order to
+    // keep the array elements untouched
     return C::Reserve(m_sz, rsv_sz);
   }
+  // Free all array elements
   void Free() {
-    Clear();
-    C::FreeTill(0);
+    Clear();  // Clear array, destroy all
+    Recycle();  // Recycle (free) allocated memory
   }
+  // Clear array
+  void Clear() {
+    A::Destroy(Data(), m_sz);  // Destroy elements
+    m_sz = 0;  // Reset array size
+  }
+  // Recyce (free) all unused memory
   bool Recycle() {
+    // Free all extra memory but keep the array elements
     return C::FreeTill(m_sz);
   }
   bool Copy(const T* arr, size_t sz) {
@@ -199,10 +286,6 @@ public:
   }
   operator bool() const {
     return m_sz;
-  }
-  void Clear() {
-    A::Destroy(Data(), m_sz);
-    m_sz = 0;
   }
   Iter Expand(const Iter& p, size_t t_sz) {
     size_t sz = m_sz;
@@ -352,6 +435,9 @@ protected:
     sz = a_sz;
     return true;
   }
+  memory::MMBase* GetMM() const {
+    return NULL;
+  }
 private:
   char m_data[S * sizeof(T)];
 };
@@ -440,6 +526,9 @@ protected:
     a_sz = 0;
     return true;
   }
+  memory::MMBase* GetMM() const {
+    return m_mm;
+  }
 private:
   size_t Round(size_t sz) {
     if (size_t r = JNU_MOD(sz, ROUND)) {
@@ -511,6 +600,9 @@ public:
     DArr::FreeTill(0);
     sz = 0;
     return SArr::Move(sz, (SArr&) arr, a_sz);
+  }
+  memory::MMBase* GetMM() const {
+    return DArr::GetMM();
   }
 };
 template<typename T, size_t S, typename A>
