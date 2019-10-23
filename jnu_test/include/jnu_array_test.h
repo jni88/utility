@@ -1,3 +1,6 @@
+// By JNI
+// Test cases of array
+
 #ifndef JNU_ARRAY_TEST_H
 #define JNU_ARRAY_TEST_H
 
@@ -5,10 +8,15 @@
 #include "jnu_array.h"
 
 namespace jnu_test {
-class SArrayTest : public jnu::TestCase {
+// Template for test different types array
+template<typename C>
+class ArrayTestImp : public jnu::TestCase {
+  // Main test entry
   void Test();
 };
+// Array tests
 class ArrayTest : public jnu::TestCase {
+  // Main test entry
   void Test();
 };
 }

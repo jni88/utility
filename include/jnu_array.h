@@ -320,11 +320,14 @@ public:
   Iter Expand(const Iter& p, size_t t_sz) {
     size_t sz = m_sz;  // Current array size
     size_t new_sz = sz + t_sz;  // New size after expand
+    T* org_data = Data();  // Old array
     // Check overflow and reserve memory
     if (new_sz < sz || !Reserve(new_sz)) {
       return Iter();  // Fail, return invalid iterator
     }
-    T* pos = Adjust(p);  // Adjust expand position
+    // Adjust input iterator in case
+    // new memory is allocated during Reserve
+    T* pos = Adjust(p + (Data() - org_data));  // Adjust expand position
     T* end = End();  // End of array
     A::Initialize(end, t_sz);  // Initialize newly reserved memory
     // Move elements to make space
@@ -339,6 +342,9 @@ public:
   // Return: success - the position of insert
   //         fail - invalid iterator
   Iter Insert(const Iter& p, const T& t, size_t t_sz) {
+    if (Overlap(&t, 1)) {  // Input overlap array is not allowed
+      return Iter();
+    }
     Iter pos = Expand(p, t_sz);  // Expand array
     if (pos) {  // Expand success
       Iter end = pos + t_sz;  // End position
@@ -355,9 +361,12 @@ public:
   // Return: success - the position of insert
   //         fail - invalid iterator
   Iter Insert(const Iter& p, const T* t, size_t t_sz) {
+    if (Overlap(t, t_sz)) {  // Input overlap array is not allowed
+      return Iter();
+    }
     Iter pos = Expand(p, t_sz);  // Expand array
     if (pos) {  // Expand success
-      A::Copy(pos, t, t_sz);  // Copy raw array
+      A::Copy((T*)pos, t, t_sz);  // Copy raw array
     }
     return pos;  // Return insert position
   }
@@ -372,6 +381,9 @@ public:
   // Return: success - the position of inject
   //         fail - invalid iterator
   Iter Inject(const Iter& p, T* t, size_t t_sz) {
+    if (Overlap(t, t_sz)) {  // Input overlap array is not allowed
+      return Iter();
+    }
     Iter pos = Expand(p, t_sz);  // Expand array
     if (pos) {  // Expand success
       A::Move((T*)pos, t, t_sz);  // Move raw array
@@ -388,6 +400,9 @@ public:
   //         fail - invalid iterator
   template<typename H>
   Iter Inject(const Iter& p, H& t, T* t_start, size_t t_sz) {
+    if (Overlap(t_start, t_sz)) {  // Input overlap array is not allowed
+      return Iter();
+    }
     // Adjust input subarray
     t_start = Adjust<H>(t_start, t_sz, t);
     // Inject raw array of input
@@ -411,7 +426,7 @@ public:
   Iter Delete(const Iter& p, size_t t_sz) {
     T* pos = Adjust(p, t_sz);  // Adjust delete position and size
     T* end = End();  // End of array
-    size_t sz = end - pos - t_sz;  // Remain tail size after delete
+    size_t sz = end - pos - t_sz;  // Size to shift
     A::Move(pos, pos + t_sz, sz);  // Shift remain tail
     A::Destroy(pos + sz, t_sz);  // Destroy unused part of tail
     m_sz -= t_sz;  // Update array size
@@ -429,12 +444,12 @@ public:
   Iter DeleteFlip(const Iter& p, size_t t_sz) {
     T* pos = Adjust(p, t_sz);  // Adjust delete position and size
     T* end = End();  // End of array
-    size_t sz = end - pos - t_sz;  // Remain tail size after delete
+    size_t sz = end - pos - t_sz;  // Size to flip
     if (sz > t_sz) {  // Adjust flip size
       sz = t_sz;
     }
     A::Move(pos, end - sz, sz);  // Flip the tail
-    A::Destroy(end + sz, t_sz);  // Destroy unused part of tail
+    A::Destroy(pos + sz, t_sz - sz);  // Destroy unused part of tail
     m_sz -= t_sz;  // Update array size
     return Iter(pos);  // Return the position of delete
   }
@@ -507,6 +522,10 @@ private:
   // with respect the current array
   T* Adjust(T* p) {
     return Adjust(p, Begin(), End());
+  }
+  // Check if input array overlaps with current one
+  bool Overlap(const T* p, size_t sz) const {
+    return p + sz >= p && p < End() && (p + sz) > Begin();
   }
   size_t m_sz;  // Array size
 };
@@ -604,18 +623,23 @@ protected:
     if (!m_mm) {  // No valid memory manager
       return false;  // Fail
     }
-    size_t n_sz = rsv_sz * sizeof(T);  // Required memory size
-    if (n_sz / rsv_sz != sizeof(T)) {  // Check overflow
-      return false;
+    size_t n_sz = Round(rsv_sz);  // Round required size
+    size_t mem_n_sz = n_sz * sizeof(T);  // Corresponding memory size
+    if (mem_n_sz / n_sz != sizeof(T)) {  // Check overflow
+      n_sz = rsv_sz;  // In case overflow, use actual size
+      mem_n_sz = n_sz * sizeof(T);  // Corresponding memory size
+      if (mem_n_sz / n_sz != sizeof(T)) {  // Check overflow
+        return false;  // Overflow, fail
+      }
     }
-    size_t r_sz = Round(n_sz);  // Round memory size
-    T* ptr = (T*)m_mm->Malloc(AL, r_sz);  // Allocate memory
+    T* ptr = (T*)m_mm->Malloc(AL, mem_n_sz);  // Allocate memory
     if (!ptr) {  // Allocation failed
-      if (r_sz <= n_sz) {  // Rounded size is real size
+      if (n_sz <= rsv_sz) {  // In case real size equal to round size
         return false;  // Fail
       }
-      r_sz = n_sz;  // Try real size, it is smaller
-      ptr = (T*)m_mm->Malloc(AL, r_sz);  // Allocate real size
+      // Try real size, it is smaller
+      n_sz = rsv_sz;  // Record real size
+      ptr = (T*)m_mm->Malloc(AL, n_sz * sizeof(T));  // Allocate real size
       if (!ptr) {  // Still fail
         return false;  // Fail
       }
@@ -625,7 +649,7 @@ protected:
     A::Destroy(m_data, sz);  // Destroy items in old array
     m_mm->Free(m_data);  // Free old memory
     m_data = ptr;  // Assign new array
-    m_mem_sz = r_sz;  // Update reserved memory size
+    m_mem_sz = n_sz;  // Update reserved memory size
     return true;  // Success
   }
   // Free memory
