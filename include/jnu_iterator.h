@@ -123,6 +123,16 @@ public:
   operator T() const {
     return m_it;
   }
+  const T& operator->() const {
+    return m_it;
+  }
+  T& operator->() {
+    return m_it;
+  }
+  // Calculate distance between two iterators
+  size_t operator-(const Iterator& b) const {
+    return (size_t)(m_it - b.m_it);
+  }
 private:
   T m_it;  // Underline value
 };

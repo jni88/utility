@@ -308,8 +308,12 @@ public:
     return m_sz;
   }
   // Check if array is empty
+  bool IsEmpty() const {
+    return m_sz <= 0;
+  }
+  // Check if array is not empty
   operator bool() const {
-    return m_sz;
+    return m_sz > 0;
   }
   // Expand array at certain position
   // Input: p - the position expand happens
