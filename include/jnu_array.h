@@ -155,7 +155,6 @@ class ArrayImp : private C {
 public:
   typedef T Type;  // Underline element type
   typedef Iterator<T*, (T*)NULL> Iter;  // Define of iterator
-  typedef Iterator<const T*, (T*)NULL> IterC;  // Const iterator
   // Constructor
   // Input: mm - memory manager (for malloc and free)
   //        rsv_sz - size of reserved memory
@@ -296,11 +295,7 @@ public:
     return res;  // Result
   }
   // Access underline array
-  const T* Data() const {
-    return C::Data();
-  }
-  // Access underline array
-  T* Data() {
+  T* Data() const {
     return C::Data();
   }
   // Access array size
@@ -458,43 +453,23 @@ public:
     return Iter(pos);  // Return the position of delete
   }
   // Access begin of array
-  Iter Begin() {
+  Iter Begin() const {
     return Iter(Data());
   }
-  // Constant access begin of array
-  IterC Begin() const {
-    return IterC(Data());
-  }
   // Access end of array
-  Iter End() {
+  Iter End() const {
     return Iter(Data() + m_sz);
   }
-  // Constant access end of array
-  IterC End() const {
-    return IterC(Data() + m_sz);
-  }
   // Access reversed begin
-  Iter RBegin() {
+  Iter RBegin() const {
     return Iter(End() - 1);
   }
-  // Constant access reversed begin
-  IterC RBegin() const {
-    return IterC(End() - 1);
-  }
   // Access reversed end
-  Iter REnd() {
+  Iter REnd() const {
     return Iter(Begin() - 1);
   }
-  // Constant access reversed end
-  IterC REnd() const {
-    return IterC(Begin() - 1);
-  }
   // Access item
-  T& operator[](size_t i) {
-    return Data()[i];
-  }
-  // Constant access item
-  const T& operator[](size_t i) const {
+  T& operator[](size_t i) const {
     return Data()[i];
   }
 private:
@@ -515,16 +490,16 @@ private:
   }
   // Adjust with respect input array t
   template<typename H>
-  static T* Adjust(T* p, size_t&sz, H& t) {
+  static T* Adjust(T* p, size_t&sz, const H& t) {
     return Adjust(p, sz, t.Begin(), t.End());
   }
   // Adjust with respect the current array
-  T* Adjust(T* p, size_t& sz) {
+  T* Adjust(T* p, size_t& sz) const {
     return Adjust(p, sz, *this);
   }
   // Adjust array start only
   // with respect the current array
-  T* Adjust(T* p) {
+  T* Adjust(T* p) const {
     return Adjust(p, Begin(), End());
   }
   // Check if input array overlaps with current one
@@ -547,11 +522,7 @@ protected:
   SArrayDef(memory::MMBase* mm) {
   }
   // Access underline array
-  T* Data() {
-    return (T*) m_data;
-  }
-  // Constant access underline array
-  const T* Data() const {
+  T* Data() const {
     return (T*) m_data;
   }
   // Reserve memory
@@ -610,11 +581,7 @@ protected:
       m_mm (mm) {
   }
   // Access underline dynamic array
-  T* Data() {
-    return m_data;
-  }
-  // Constant access dynamic array
-  const T* Data() const {
+  T* Data() const {
     return m_data;
   }
   // Reserve memory
@@ -745,13 +712,9 @@ public:
       DArr (mm) {
   }
   // Access underline array
-  T* Data() {
+  T* Data() const {
     // If dynamic array is allocated, then use dynamic array
     // otherwise use static array
-    return DArr::Data() ? DArr::Data() : SArr::Data();
-  }
-  // Constant access underline array
-  const T* Data() const {
     return DArr::Data() ? DArr::Data() : SArr::Data();
   }
   // Reserve memory
