@@ -25,7 +25,6 @@ public:
   typedef T Type;
   typedef K Key;
   typedef typename C::Iter Iter;
-  typedef typename C::IterC IterC;
   class Res {
     friend class SetT;
   public:
@@ -40,18 +39,21 @@ public:
       return (bool) m_it;
     }
     bool Inserted() const {
-      return m_inserted;
+      return !m_found;
+    }
+    bool Found() const {
+      return m_found;
     }
   private:
     Res()
-      : m_inserted (false) {
+      : m_found (false) {
     }
-    Res(const Iter& it, bool inserted)
+    Res(const Iter& it, bool found = false)
       : m_it (it),
-        m_inserted (inserted) {
+        m_found (found) {
     }
     Iter m_it;
-    bool m_inserted;
+    bool m_found;
   };
   SetT(size_t rsv_sz = 0,
       memory::MMBase* mm = &memory::MM_BUILDIN)
@@ -94,38 +96,35 @@ public:
   operator bool() const {
     return Size() > 0;
   }
-  C& Data() {
+  C& Data() const {
     return m_data;
   }
-  const C& Data() const {
-    return m_data;
-  }
-  Iter Begin() {
+  Iter Begin() const {
     return m_data.Begin();
   }
-  IterC Begin() const {
-    return m_data.Begin();
-  }
-  Iter End() {
+  Iter End() const {
     return m_data.End();
   }
-  IterC End() const {
-    return m_data.End();
-  }
-  Res Insert(const T& t) {
-    Res r = Locate(m_data.Begin(), m_data.End(), (t.*F)());
+  template<typename... Hints>
+  Res Insert(const T& t, Hints... hints) {
+    Res r = Locate((t.*F)(), hints...);
     if (r.Inserted()) {
       if (!m_data.Insert((*r), t, 1)) {
         return Res();
-      } 
+      }
     }
     return r;
+  }
+  template<typename... Hints>
+  Iter Find(const T& t, Hints... hints) {
+    Res r = Locate((t.*F)(), hints...);
+    return r.Found() ? *r : Iter();
   }
 private:
   static bool Less(const K& a, const K& b) {
     return compare<LESS>(a, b);
   }
-  Res Locate(const Iter& s, const Iter& e, const Key& key) {
+  Res Search(const Key& key, const Iter& s, const Iter& e) const {
     Iter start = s;
     Iter end = e;
     while (start < end) {
@@ -136,23 +135,35 @@ private:
       } else if (Less(mid_key, key)) {
         start = mid + 1;
       } else {
-        return Res(mid, false);
+        return Res(mid, true);
       }
     }
-    return Res(start, true);
+    return Res(start);
   }
-  Res Locate(const Iter& hint, const K& key) {
-    if (hint < Begin() || hint >= End()) {
-      return Locate(Begin(), End());
+  template<typename... Hints>
+  Res Locate(const K& key, Hints... hints) const {
+    Res res(Begin(), true);
+    return Locate(key, res, hints...);
+  }
+  Res Locate(const K& key, const Res& res) const {
+    return Search(key, *res, End());
+  }
+  template<typename... Hints>
+  Res Locate(const K& key, Res& res,
+             const Iter& hint, Hints... hints) const {
+    if (hint < *res || hint >= End()) {
+      return Locate(key, res, hints...);
     }
-    const Key& hint_key = (hint->*F)();
-    if (Less(key, hint_key)) {
-      return Locate(Begin(), hint);
+    const K& hint_key = (hint->*F)();
+    if (key < hint_key) {
+      return Search(key, *res, hint);
     }
-    if (Less(hint_key, key)) {
-      return Locate(hint + 1, End());
+    res.m_it = hint;
+    if (hint_key < key) {
+      return Locate(key, res, hints...); 
     }
-    return hint;
+    printf("hint hit\n");
+    return res;
   }
   C m_data;
 };
