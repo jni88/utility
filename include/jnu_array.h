@@ -472,6 +472,10 @@ public:
   T& operator[](size_t i) const {
     return Data()[i];
   }
+  // Adjust with respect the current array
+  T* Adjust(T* p, size_t& sz) const {
+    return Adjust(p, sz, *this);
+  }
 private:
   // Adjust array start p,
   // make sure it is in range [begin, end)
@@ -492,10 +496,6 @@ private:
   template<typename H>
   static T* Adjust(T* p, size_t&sz, const H& t) {
     return Adjust(p, sz, t.Begin(), t.End());
-  }
-  // Adjust with respect the current array
-  T* Adjust(T* p, size_t& sz) const {
-    return Adjust(p, sz, *this);
   }
   // Adjust array start only
   // with respect the current array

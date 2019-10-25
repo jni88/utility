@@ -31,7 +31,6 @@ public:
   class Res {
     friend class SetT;
   public:
-    Iter& operator=(const Iter&) = delete;
     Iter& operator*() {
       return m_it;
     }
@@ -51,7 +50,7 @@ public:
     Res()
       : m_found (false) {
     }
-    Res(const Iter& it, bool found = false)
+    Res(const Iter& it, bool found)
       : m_it (it),
         m_found (found) {
     }
@@ -115,36 +114,41 @@ public:
     return m_data.REnd();
   }
   template<typename... Hints>
-  Res Insert(const T& t, Hints... hints) {
-    return Add<const T, Hints...>(t, &C::Insert, hints...);
-  }
-  template<typename... Hints>
-  size_t Insert(const T* t, size_t t_sz, Hints... hints) {
+  bool Insert(const T* t, size_t t_sz, Hints... hints) {
     return Add<const T, Hints...>(t, t_sz, &C::Insert, hints...);
   }
+  template<typename... Hints>
+  Res Insert(const T& t, Hints... hints) {
+    return Insert(&t, 1, hints...);
+  }
   template<typename H, typename... Hints>
-  IsClass<H, size_t> Insert(const H& arr, Hints... hints) {
+  IsClass<H, bool> Insert(const H& arr, Hints... hints) {
     return Insert(arr.Data(), arr.Size(), hints...);
   }
   template<typename... Hints>
-  Res Inject(T& t, Hints... hints) {
-    return Add<T, Hints...>(t, &C::Inject, hints...);
-  }
-  template<typename... Hints>
-  size_t Inject(T* t, size_t t_sz, Hints... hints) {
+  bool Inject(T* t, size_t t_sz, Hints... hints) {
     return Add<T, Hints...>(t, t_sz, &C::Inject, hints...);
   }
-  template<typename H, typename... Hints>
-  IsClass<H, size_t> Inject(H& arr, Hints... hints) {
-    size_t sz = Inject(arr.Data(), arr.Size(), hints...);
-    arr.Clear();
-    return sz;
+  template<typename... Hints>
+  bool Inject(T& t, Hints... hints) {
+    return Inject(&t, 1, hints...);
   }
   template<typename H, typename... Hints>
-  size_t InjectRange(H& arr, T* t, size_t t_sz, Hints... hints) {
-    size_t sz = Inject(t, t_sz, hints...);
-    arr.Delete(t, t_sz);
-    return sz;
+  IsClass<H, bool> Inject(H& arr, Hints... hints) {
+    if (Inject(arr.Data(), arr.Size(), hints...)) {
+      arr.Clear();
+      return true;
+    }
+    return false;
+  }
+  template<typename H, typename... Hints>
+  bool InjectRange(H& arr, T* t, size_t t_sz, Hints... hints) {
+    t = arr.Adjust(t, t_sz);
+    if (Inject(t, t_sz, hints...)) {
+      arr.Delete(t, t_sz);
+      return true;
+    }
+    return false;
   }
   template<typename... Hints>
   Iter Find(const T& t, Hints... hints) {
@@ -153,30 +157,19 @@ public:
   }
 private:
   template<typename H, typename... Hints>
-  Res Add(H& t,
+  Res Add(H* t, size_t t_sz,
           Iter (C::*insert)(const Iter&, H*, size_t),
           Hints... hints) {
-    Res r = Locate((t.*F)(), hints...);
-    if (r.Inserted()) {
-      if (!(m_data.*insert)(*r, &t, 1)) {
-        return Res();
+    Res r;
+    if (m_data.Reserve(t_sz)) {
+      for (size_t i = 0; i < t_sz; ++i) {
+        r = Locate((t[i].*F)(), *r, hints...);
+        if (!r.Found()) {
+          (m_data.*insert)(*r, t + i, 1);
+        }
       }
     }
     return r;
-  }
-  template<typename H, typename... Hints>
-  size_t Add(H* t, size_t t_sz,
-             Iter (C::*insert)(const Iter&, H*, size_t),
-             Hints... hints) {
-    size_t sz = 0;
-    Iter h;
-    for (size_t i = 0; i < t_sz; ++i) {
-      if (Res r = Add<H, Hints...>(t[i], insert, h, hints...)) {
-        h = *r;
-        ++sz;
-      }
-    }
-    return sz;
   }
   static bool Less(const K& a, const K& b) {
     return compare<LESS>(a, b);
@@ -195,31 +188,29 @@ private:
         return Res(mid, true);
       }
     }
-    return Res(start);
+    return Res(start, false);
   }
   template<typename... Hints>
   Res Locate(const K& key, Hints... hints) const {
-    Res res(Begin(), true);
-    return LocateR(key, res, hints...);
+    return LocateR(key, Begin(), End(), hints...);
   }
-  Res LocateR(const K& key, const Res& res) const {
-    return Search(key, *res, End());
+  Res LocateR(const K& key, const Iter& s, const Iter& e) const {
+    return Search(key, s, e);
   }
   template<typename... Hints>
-  Res LocateR(const K& key, Res& res,
+  Res LocateR(const K& key, const Iter& s, const Iter& e,
              const Iter& hint, Hints... hints) const {
-    if (!hint || hint < *res || hint >= End()) {
-      return LocateR(key, res, hints...);
+    if (hint < s || hint >= e) {
+      return LocateR(key, s, e, hints...);
     }
     const K& hint_key = (hint->*F)();
     if (key < hint_key) {
-      return Search(key, *res, hint);
+      return Search(key, s, hint);
     }
-    res.m_it = hint;
     if (hint_key < key) {
-      return LocateR(key, res, hints...);
+      return LocateR(key, hint + 1, e, hints...);
     }
-    return res;
+    return Res(hint, true);
   }
   C m_data;
 };
