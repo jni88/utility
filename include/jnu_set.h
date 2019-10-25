@@ -205,7 +205,7 @@ private:
     }
     const K& hint_key = (hint->*F)();
     if (key < hint_key) {
-      return Search(key, s, hint);
+      return LocateR(key, s, hint, hints...);
     }
     if (hint_key < key) {
       return LocateR(key, hint + 1, e, hints...);
