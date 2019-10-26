@@ -214,28 +214,24 @@ private:
     if (m_data.Reserve(t_sz)) {
       H* t_end = t + t_sz;
       H* a = t;
-      size_t a_sz = 0;
       Iter a_it;
       while (t < t_end) {
         Res r = Locate((t->*F)(), *r, hints...);
         if (r.Found()) {
-          (m_data.*insert)(a_it, a, a_sz);
-          a_sz = 0;
+          (m_data.*insert)(a_it, a, t - a);
+          a = t + 1;
         } else if (*r != a_it) {
-          (m_data.*insert)(a_it, a, a_sz);
+          (m_data.*insert)(a_it, a, t - a);
           if (*r == m_data.End()) {
-            (m_data.*insert)(*r, a + a_sz, t_end - a - a_sz);
+            (m_data.*insert)(*r, t, t_end - t);
             return r;
           }
+          a_it = *r + (t - a);
           a = t;
-          a_it = *r + a_sz;
-          a_sz = 1;
-        } else {
-          ++a_sz;
         }
         ++t;
       }
-      (m_data.*insert)(a_it, a, a_sz);
+      (m_data.*insert)(a_it, a, t_end - a);
       return Res(m_data.End(), false);
     }
     return Res();
