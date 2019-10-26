@@ -118,6 +118,10 @@ public:
     return Add<const T, Hints...>(t, t_sz, &C::Insert, hints...);
   }
   template<typename... Hints>
+  bool Insert(const T* t, const T* t_end, Hints... hints) {
+    return Insert(t, Distance(t, t_end), hints...);
+  }
+  template<typename... Hints>
   Res Insert(const T& t, Hints... hints) {
     return Insert(&t, 1, hints...);
   }
@@ -128,6 +132,10 @@ public:
   template<typename... Hints>
   bool Inject(T* t, size_t t_sz, Hints... hints) {
     return Add<T, Hints...>(t, t_sz, &C::Inject, hints...);
+  }
+  template<typename... Hints>
+  bool Inject(T* t, T* t_end, Hints... hints) {
+    return Inject(t, Distance(t, t_end), hints...);
   }
   template<typename... Hints>
   bool Inject(T& t, Hints... hints) {
@@ -150,12 +158,19 @@ public:
     }
     return false;
   }
+  template<typename H, typename... Hints>
+  bool InjectRange(H& arr, T* t, T* t_end, Hints... hints) {
+    return InjectRange(arr, t, Distance(t, t_end), hints...);
+  }
   template<typename... Hints>
   Iter Find(const T& t, Hints... hints) {
     Res r = Locate((t.*F)(), hints...);
     return r.Found() ? *r : Iter();
   }
 private:
+  size_t Distance(const T* s, const T* e) {
+    return s < e ? (size_t) (e - s) : 0;
+  }
   template<typename H, typename... Hints>
   Res Add(H* t, size_t t_sz,
           Iter (C::*insert)(const Iter&, H*, size_t),

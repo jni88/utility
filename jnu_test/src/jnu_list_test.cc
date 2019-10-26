@@ -28,7 +28,7 @@ void SListTest::TestInsert() {
   // After insertion, 'ls' becomes:
   // a->b->c->d->e
   // And 'ls_a' become empty
-  JNU_UT_CHECK(!ls_a);
+  JNU_UT_CHECK(ls_a.IsEmpty());
   JNU_UT_EQUAL(ls.Size(), 5);
   JNU_UT_EQUAL(ls.Head(), &a);
   JNU_UT_EQUAL(ls.Next(a), &b);
@@ -119,7 +119,7 @@ void DListTest::TestInsert() {
   // Move 'ls_a' to head of 'ls':
   // ls = a->b->c->d->e
   ls.InsertHead(std::move(ls_a));
-  JNU_UT_CHECK(!ls_a);
+  JNU_UT_CHECK(ls_a.IsEmpty());
   JNU_UT_EQUAL(ls.Size(), 5);
   JNU_UT_EQUAL(ls.Head(), &a);
   JNU_UT_EQUAL(ls.Prev(c), &b);

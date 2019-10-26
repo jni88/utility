@@ -65,14 +65,14 @@ void ArrayTestImp<C>::Test() {
   // Test of array inject
   JNU_UT_CHECK(c.Inject(c.Begin() + 1, b));
   JNU_UT_EQUAL(c.Size(), 4);
-  JNU_UT_CHECK(!b);
+  JNU_UT_CHECK(b.IsEmpty());
   JNU_UT_EQUAL(c[0].m_str, "d_0123456789");
   JNU_UT_EQUAL(c[1].m_str, "d_0123456789");
   JNU_UT_EQUAL(c[2].m_str, "b_0123456789");
   JNU_UT_EQUAL(c[3].m_str, "b_0123456789");
   // Test of array move
   c = std::move(a);
-  JNU_UT_CHECK(!a);
+  JNU_UT_CHECK(a.IsEmpty());
   JNU_UT_EQUAL(c.Size(), 4);
   JNU_UT_EQUAL(c[0].m_str, "a_0123456789");
   JNU_UT_EQUAL(c[1].m_str, "b_0123456789");
@@ -93,7 +93,7 @@ void ArrayTestImp<C>::Test() {
   JNU_UT_EQUAL(c[0].m_str, "d_0123456789");
   JNU_UT_EQUAL(c[1].m_str, "c_0123456789");
   JNU_UT_CHECK(c.DeleteFlip(c.Begin(), 100));
-  JNU_UT_CHECK(!c);
+  JNU_UT_CHECK(c.IsEmpty());
 }
 // Main test entry
 void ArrayTest::Test() {

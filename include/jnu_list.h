@@ -61,12 +61,6 @@ public:
   bool IsEmpty() const {
     return m_size == 0;
   }
-  // Bool operator:
-  // Return: true - list is not empty
-  //         false - list is empty
-  operator bool() const {
-    return !IsEmpty();
-  }
   // Get list head
   C* Head() const {
     return m_head;
@@ -97,7 +91,8 @@ public:
   bool InsertHead(const ListBase& ls) {
     // For nonempty list 'ls',
     // insert it into list head
-    return !ls || InsertHead(*ls.Head(), *ls.Tail(), ls.Size());
+    return ls.IsEmpty() ||
+           InsertHead(*ls.Head(), *ls.Tail(), ls.Size());
   }
   // Move a list 'ls' into list head
   bool InsertHead(ListBase&& ls) {
@@ -116,7 +111,8 @@ public:
   bool InsertTail(const ListBase& ls) {
     // For nonempty list 'ls',
     // insert it into list tail
-    return !ls || InsertTail(*ls.Head(), *ls.Tail(), ls.Size());
+    return ls.IsEmpty() ||
+           InsertTail(*ls.Head(), *ls.Tail(), ls.Size());
   }
   // Move a list 'ls' into list tail
   bool InsertTail(ListBase&& ls) {
@@ -138,7 +134,8 @@ public:
   // next of the current object 'obj'
   bool InsertNext(C& obj, const ListBase& ls) {
     // Insert if 'ls' is not empty
-    return !ls || InsertNext(obj, *ls.Head(), *ls.Tail(), ls.Size());
+    return ls.IsEmpty() ||
+           InsertNext(obj, *ls.Head(), *ls.Tail(), ls.Size());
   }
   // Move list 'ls' into
   // next of the current object 'obj'
@@ -163,7 +160,8 @@ public:
   // Note: only for double link list
   bool InsertPrev(C& obj, const ListBase& ls) {
     // Insert if 'ls' is not empty
-    return !ls || InsertPrev(obj, *ls.Head(), *ls.Tail(), ls.Size());
+    return ls.IsEmpty() ||
+           InsertPrev(obj, *ls.Head(), *ls.Tail(), ls.Size());
   }
   // Move list 'ls' into
   // previous of the current object 'obj'

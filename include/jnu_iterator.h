@@ -19,6 +19,7 @@ template<typename T, T INV>
 class Iterator {
 public:
   typedef T Type;  // Define of underline type
+  constexpr static T INV_VAL = INV;
   // Default constructor,
   // Initialize underline value to
   // invalid
@@ -43,7 +44,7 @@ public:
     return *this = it.m_it;
   }
   // Check if iterator is valid
-  operator bool() const {
+  bool IsValid() const {
     return m_it != INV;
   }
   // Template for equal operator

@@ -306,10 +306,6 @@ public:
   bool IsEmpty() const {
     return m_sz <= 0;
   }
-  // Check if array is not empty
-  operator bool() const {
-    return m_sz > 0;
-  }
   // Expand array at certain position
   // Input: p - the position expand happens
   //        t_sz - expand size
@@ -345,7 +341,7 @@ public:
       return Iter();
     }
     Iter pos = Expand(p, t_sz);  // Expand array
-    if (pos) {  // Expand success
+    if (pos.IsValid()) {  // Expand success
       Iter end = pos + t_sz;  // End position
       // Repeat the input element
       for (Iter i = pos; i < end; ++i) {
@@ -364,10 +360,15 @@ public:
       return Iter();
     }
     Iter pos = Expand(p, t_sz);  // Expand array
-    if (pos) {  // Expand success
+    if (pos.IsValid()) {  // Expand success
       A::Copy((T*)pos, t, t_sz);  // Copy raw array
     }
     return pos;  // Return insert position
+  }
+  // Insert a raw array into certain position
+  // Here input array is defined by [t, t_end)
+  Iter Insert(const Iter& p, const T* t, const T* t_end) {
+    return Insert(p, t, Distance(t, t_end));
   }
   // Insert array with any type
   template<typename H>
@@ -384,10 +385,15 @@ public:
       return Iter();
     }
     Iter pos = Expand(p, t_sz);  // Expand array
-    if (pos) {  // Expand success
+    if (pos.IsValid()) {  // Expand success
       A::Move((T*)pos, t, t_sz);  // Move raw array
     }
     return pos;  // Return inject position
+  }
+  // Inject (move) raw array into certain position
+  // Here input array is defined by [t, t_end)
+  Iter Inject(const Iter& p, T* t, T* t_end) {
+    return Inject(p, t, Distance(t, t_end));
   }
   // Inject subarray
   // H: type of array
@@ -406,10 +412,16 @@ public:
     t_start = Adjust<H>(t_start, t_sz, t);
     // Inject raw array of input
     Iter pos = Inject(p, t_start, t_sz);
-    if (pos) {  // Inject success
+    if (pos.IsValid()) {  // Inject success
       t.Delete(t_start, t_sz);  // Delete injected items
     }
     return pos;
+  }
+  // Inject subarray
+  // Here input subarray is defined by [t_start, t_end)
+  template<typename H>
+  Iter InjectRange(const Iter& p, H& t, T* t_start, T* t_end) {
+    return InjectRange(p, t, t_start, Distance(t_start, t_end));
   }
   // Inject constructed array
   // H - type of array
@@ -477,6 +489,10 @@ public:
     return Adjust(p, sz, *this);
   }
 private:
+  // Calculate distance between [s, e)
+  size_t Distance(const T* s, const T* e) {
+    return s < e ? (size_t) (e - s) : 0;
+  }
   // Adjust array start p,
   // make sure it is in range [begin, end)
   static T* Adjust(T* p, T* begin, T* end) {
