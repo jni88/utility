@@ -63,7 +63,7 @@ void ArrayTestImp<C>::Test() {
   JNU_UT_EQUAL(c.Size(), 2);
   JNU_UT_CHECK(c[0].m_str == b[0].m_str && c[1].m_str == b[1].m_str);
   // Test of array inject
-  JNU_UT_CHECK(c.Inject(c.Begin() + 1, b));
+  JNU_UT_CHECK(c.Inject(c.Begin() + 1, b, b.Begin(), b.End()));
   JNU_UT_EQUAL(c.Size(), 4);
   JNU_UT_CHECK(b.IsEmpty());
   JNU_UT_EQUAL(c[0].m_str, "d_0123456789");

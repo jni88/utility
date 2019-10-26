@@ -370,11 +370,6 @@ public:
   Iter Insert(const Iter& p, const T* t, const T* t_end) {
     return Insert(p, t, Distance(t, t_end));
   }
-  // Insert array with any type
-  template<typename H>
-  Iter Insert(const Iter& p, const H& t) {
-    return Insert(p, t.Data(), t.Size());
-  }
   // Inject (move) raw array into certain position
   // Input: p - inject position
   //        t, t_sz - input array and length
@@ -422,12 +417,6 @@ public:
   template<typename H>
   Iter Inject(const Iter& p, H& t, T* t_start, T* t_end) {
     return Inject(p, t, t_start, Distance(t_start, t_end));
-  }
-  // Inject constructed array
-  // H - type of array
-  template<typename H>
-  Iter Inject(const Iter& p, H& t) {
-    return Inject(p, t, t.Begin(), t.Size());  // Inject
   }
   // Delete items from array
   // Shift the tail into deleted position

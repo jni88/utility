@@ -142,6 +142,14 @@ public:
   bool Inject(T& t, Hints... hints) {
     return Inject(&t, 1, hints...);
   }
+  template<typename... Hints>
+  bool InjectSorted(T* t, size_t t_sz, Hints... hints) {
+    return Merge<T, Hints...>(t, t_sz, &C::Inject, hints...);
+  }
+  template<typename... Hints>
+  bool InjectSorted(T* t, T* t_end, Hints... hints) {
+    return InjectSorted(t, Distance(t, t_end), hints...);
+  }
   template<typename H, typename... Hints>
   bool Inject(H& arr, T* t, size_t t_sz, Hints... hints) {
     t = arr.Adjust(t, t_sz);
@@ -155,10 +163,29 @@ public:
   bool Inject(H& arr, T* t, T* t_end, Hints... hints) {
     return Inject(arr, t, Distance(t, t_end), hints...);
   }
+  template<typename H, typename... Hints>
+  bool InjectSorted(H& arr, T* t, size_t t_sz, Hints... hints) {
+    t = arr.Adjust(t, t_sz);
+    if (InjectSorted(t, t_sz, hints...)) {
+      arr.Delete(t, t_sz);
+      return true;
+    }
+    return false;
+  }
+  template<typename H, typename... Hints>
+  bool InjectSorted(H& arr, T* t, T* t_end, Hints... hints) {
+    return InjectSorted(arr, t, Distance(t, t_end), hints...);
+  }
+  Iter Delete(const Iter& p, size_t t_sz) {
+    return m_data.Delete(p, t_sz);
+  }
   template<typename... Hints>
   Iter Find(const T& t, Hints... hints) const {
     Res r = Locate((t.*F)(), hints...);
     return r.Found() ? *r : Iter();
+  }
+  T* Adjust(T* p, size_t& sz) const {
+    return m_data.Adjust(p, sz);
   }
 private:
   size_t Distance(const T* s, const T* e) {
@@ -186,7 +213,7 @@ private:
             Hints... hints) {
     if (m_data.Reserve(t_sz)) {
       H* t_end = t + t_sz;
-      H* a = NULL;
+      H* a = t;
       size_t a_sz = 0;
       Iter a_it;
       while (t < t_end) {
