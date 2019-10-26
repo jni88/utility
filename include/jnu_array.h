@@ -345,7 +345,7 @@ public:
       Iter end = pos + t_sz;  // End position
       // Repeat the input element
       for (Iter i = pos; i < end; ++i) {
-        *i = t;
+        *(*i) = t;
       }
     }
     return pos;  // Return insert position
