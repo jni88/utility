@@ -404,7 +404,7 @@ public:
   // Return: success - the position of inject
   //         fail - invalid iterator
   template<typename H>
-  Iter InjectRange(const Iter& p, H& t, T* t_start, size_t t_sz) {
+  Iter Inject(const Iter& p, H& t, T* t_start, size_t t_sz) {
     if (Overlap(t_start, t_sz)) {  // Input overlap array is not allowed
       return Iter();
     }
@@ -420,14 +420,14 @@ public:
   // Inject subarray
   // Here input subarray is defined by [t_start, t_end)
   template<typename H>
-  Iter InjectRange(const Iter& p, H& t, T* t_start, T* t_end) {
-    return InjectRange(p, t, t_start, Distance(t_start, t_end));
+  Iter Inject(const Iter& p, H& t, T* t_start, T* t_end) {
+    return Inject(p, t, t_start, Distance(t_start, t_end));
   }
   // Inject constructed array
   // H - type of array
   template<typename H>
   Iter Inject(const Iter& p, H& t) {
-    return InjectRange(p, t, t.Begin(), t.Size());  // Inject
+    return Inject(p, t, t.Begin(), t.Size());  // Inject
   }
   // Delete items from array
   // Shift the tail into deleted position

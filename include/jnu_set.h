@@ -10,9 +10,6 @@ template<typename C, typename K,
          const K& (C::Type::*F)() const,
          auto LESS = (bool (*) (const K&, const K&)) NULL>
 class SetT {
-  template<typename H, typename R>
-  using IsClass = typename std::enable_if
-                  <std::is_class<H>::value, R>::type;
   template<decltype(LESS) L>
   typename std::enable_if<L == NULL, bool>::type
   static compare(const K& a, const K& b) {
@@ -125,9 +122,13 @@ public:
   Res Insert(const T& t, Hints... hints) {
     return Insert(&t, 1, hints...);
   }
-  template<typename H, typename... Hints>
-  IsClass<H, bool> Insert(const H& arr, Hints... hints) {
-    return Insert(arr.Data(), arr.Size(), hints...);
+  template<typename... Hints>
+  bool InsertSorted(const T* t, size_t t_sz, Hints... hints) {
+    return Merge<const T, Hints...>(t, t_sz, &C::Insert, hints...);
+  }
+  template<typename... Hints>
+  bool InsertSorted(const T* t, const T* t_end, Hints... hints) {
+    return InsertSorted(t, Distance(t, t_end), hints...);
   }
   template<typename... Hints>
   bool Inject(T* t, size_t t_sz, Hints... hints) {
@@ -142,15 +143,7 @@ public:
     return Inject(&t, 1, hints...);
   }
   template<typename H, typename... Hints>
-  IsClass<H, bool> Inject(H& arr, Hints... hints) {
-    if (Inject(arr.Data(), arr.Size(), hints...)) {
-      arr.Clear();
-      return true;
-    }
-    return false;
-  }
-  template<typename H, typename... Hints>
-  bool InjectRange(H& arr, T* t, size_t t_sz, Hints... hints) {
+  bool Inject(H& arr, T* t, size_t t_sz, Hints... hints) {
     t = arr.Adjust(t, t_sz);
     if (Inject(t, t_sz, hints...)) {
       arr.Delete(t, t_sz);
@@ -159,11 +152,11 @@ public:
     return false;
   }
   template<typename H, typename... Hints>
-  bool InjectRange(H& arr, T* t, T* t_end, Hints... hints) {
-    return InjectRange(arr, t, Distance(t, t_end), hints...);
+  bool Inject(H& arr, T* t, T* t_end, Hints... hints) {
+    return Inject(arr, t, Distance(t, t_end), hints...);
   }
   template<typename... Hints>
-  Iter Find(const T& t, Hints... hints) {
+  Iter Find(const T& t, Hints... hints) const {
     Res r = Locate((t.*F)(), hints...);
     return r.Found() ? *r : Iter();
   }
@@ -175,16 +168,50 @@ private:
   Res Add(H* t, size_t t_sz,
           Iter (C::*insert)(const Iter&, H*, size_t),
           Hints... hints) {
-    Res r;
     if (m_data.Reserve(t_sz)) {
+      Res r(m_data.End(), false);
       for (size_t i = 0; i < t_sz; ++i) {
         r = Locate((t[i].*F)(), *r, hints...);
         if (!r.Found()) {
           (m_data.*insert)(*r, t + i, 1);
         }
       }
+      return r;
     }
-    return r;
+    return Res();
+  }
+  template<typename H, typename... Hints>
+  Res Merge(H* t, size_t t_sz,
+            Iter (C::*insert)(const Iter&, H*, size_t),
+            Hints... hints) {
+    if (m_data.Reserve(t_sz)) {
+      H* t_end = t + t_sz;
+      H* a = NULL;
+      size_t a_sz = 0;
+      Iter a_it;
+      while (t < t_end) {
+        Res r = Locate((t->*F)(), *r, hints...);
+        if (r.Found()) {
+          (m_data.*insert)(a_it, a, a_sz);
+          a_sz = 0;
+        } else if (*r != a_it) {
+          (m_data.*insert)(a_it, a, a_sz);
+          if (*r == m_data.End()) {
+            (m_data.*insert)(*r, a + a_sz, t_end - a - a_sz);
+            return r;
+          }
+          a = t;
+          a_it = *r + a_sz;
+          a_sz = 1;
+        } else {
+          ++a_sz;
+        }
+        ++t;
+      }
+      (m_data.*insert)(a_it, a, a_sz);
+      return Res(m_data.End(), false);
+    }
+    return Res();
   }
   static bool Less(const K& a, const K& b) {
     return compare<LESS>(a, b);
