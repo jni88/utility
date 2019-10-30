@@ -154,6 +154,7 @@ class ArrayImp : private C {
   typedef typename C::Alloc A;  // Memory/object model
 public:
   typedef T Type;  // Underline element type
+  typedef A Alloc;  // Define of allocator
   typedef Iterator<T*, (T*)NULL> Iter;  // Define of iterator
   // Constructor
   // Input: mm - memory manager (for malloc and free)

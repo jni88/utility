@@ -7,20 +7,32 @@
 
 namespace jnu {
 template<typename C, typename K,
-         const K& (C::Type::*F)() const,
+         auto KEY = (const K& (*)(const typename C::Type)) NULL,
          auto LESS = (bool (*) (const K&, const K&)) NULL>
 class SetT {
   template<decltype(LESS) L>
-  typename std::enable_if<L == NULL, bool>::type
-  static compare(const K& a, const K& b) {
+  static typename std::enable_if<L == NULL, bool>::type
+  Compare(const K& a, const K& b) {
     return a < b;
   }
   template<decltype(LESS) L>
-  typename std::enable_if<L != NULL, bool>::type
-  static compare(const K& a, const K& b) {
+  static typename std::enable_if<L != NULL, bool>::type
+  Compare(const K& a, const K& b) {
     return L(a, b);
   }
   typedef typename C::Type T;
+  template<decltype(KEY) L>
+  static const typename std::enable_if
+  <L == NULL, K>::type&
+  GetKey(const T& t) {
+    return (const K&) t;
+  }
+  template<decltype(KEY) L>
+  static const typename std::enable_if
+  <L != NULL, K>::type&
+  GetKey(const T& t) {
+    return L(t);
+  }
 public:
   typedef T Type;
   typedef K Key;
@@ -110,6 +122,9 @@ public:
   Iter REnd() const {
     return m_data.REnd();
   }
+  T& operator[](size_t i) {
+    return m_data.operator[](i);
+  }
   template<typename... Hints>
   bool Insert(const T* t, size_t t_sz, Hints... hints) {
     return Add<const T, Hints...>(t, t_sz, &C::Insert, hints...);
@@ -120,7 +135,7 @@ public:
   }
   template<typename... Hints>
   Res Insert(const T& t, Hints... hints) {
-    return Insert(&t, 1, hints...);
+    return Add<const T, Hints...>(&t, 1, &C::Insert, hints...);
   }
   template<typename... Hints>
   bool InsertSorted(const T* t, size_t t_sz, Hints... hints) {
@@ -180,8 +195,8 @@ public:
     return m_data.Delete(p, t_sz);
   }
   template<typename... Hints>
-  Iter Find(const T& t, Hints... hints) const {
-    Res r = Locate((t.*F)(), hints...);
+  Iter Find(const K& key, Hints... hints) const {
+    Res r = Locate(key, hints...);
     return r.Found() ? *r : Iter();
   }
   T* Adjust(T* p, size_t& sz) const {
@@ -198,7 +213,7 @@ private:
     if (m_data.Reserve(t_sz)) {
       Res r(m_data.End(), false);
       for (size_t i = 0; i < t_sz; ++i) {
-        r = Locate((t[i].*F)(), *r, hints...);
+        r = Locate(GetKey<KEY>(t[i]), *r, hints...);
         if (!r.Found()) {
           (m_data.*insert)(*r, t + i, 1);
         }
@@ -216,7 +231,7 @@ private:
       H* a = t;
       Iter a_it;
       while (t < t_end) {
-        Res r = Locate((t->*F)(), *r, hints...);
+        Res r = Locate(GetKey<KEY>(*t), *r, hints...);
         if (r.Found()) {
           (m_data.*insert)(a_it, a, t - a);
           a = t + 1;
@@ -237,14 +252,14 @@ private:
     return Res();
   }
   static bool Less(const K& a, const K& b) {
-    return compare<LESS>(a, b);
+    return Compare<LESS>(a, b);
   }
   Res Search(const Key& key, const Iter& s, const Iter& e) const {
     Iter start = s;
     Iter end = e;
     while (start < end) {
       Iter mid = start + (end - start) / 2;
-      const Key& mid_key = (mid->*F)();
+      const Key& mid_key = GetKey<KEY>(*(*mid));
       if (Less(key, mid_key)) {
         end = mid;
       } else if (Less(mid_key, key)) {
@@ -268,7 +283,7 @@ private:
     if (hint < s || hint >= e) {
       return LocateR(key, s, e, hints...);
     }
-    const K& hint_key = (hint->*F)();
+    const K& hint_key = GetKey<KEY>(*(*hint));
     if (key < hint_key) {
       return LocateR(key, s, hint, hints...);
     }
@@ -279,6 +294,12 @@ private:
   }
   C m_data;
 };
+template<typename C,
+         auto LESS = (bool (*) (const typename C::Type&,
+                                const typename C::Type&)) NULL>
+using Set = SetT<C, typename C::Type,
+                 (const typename C::Type& (*)(const typename C::Type)) NULL,
+                 LESS>;
 }
 
 #endif
