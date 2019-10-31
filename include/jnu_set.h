@@ -167,7 +167,6 @@ public:
   }
   template<typename H, typename... Hints>
   bool Inject(H& arr, T* t, size_t t_sz, Hints... hints) {
-    t = arr.Adjust(t, t_sz);
     if (Inject(t, t_sz, hints...)) {
       arr.Delete(t, t_sz);
       return true;
@@ -180,7 +179,6 @@ public:
   }
   template<typename H, typename... Hints>
   bool InjectSorted(H& arr, T* t, size_t t_sz, Hints... hints) {
-    t = arr.Adjust(t, t_sz);
     if (InjectSorted(t, t_sz, hints...)) {
       arr.Delete(t, t_sz);
       return true;
@@ -198,9 +196,6 @@ public:
   Iter Find(const K& key, Hints... hints) const {
     Res r = Locate(key, hints...);
     return r.Found() ? *r : Iter();
-  }
-  T* Adjust(T* p, size_t& sz) const {
-    return m_data.Adjust(p, sz);
   }
 private:
   size_t Distance(const T* s, const T* e) {

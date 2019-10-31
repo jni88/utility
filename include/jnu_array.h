@@ -404,8 +404,6 @@ public:
     if (Overlap(t_start, t_sz)) {  // Input overlap array is not allowed
       return Iter();
     }
-    // Adjust input subarray
-    t_start = Adjust<H>(t_start, t_sz, t);
     // Inject raw array of input
     Iter pos = Inject(p, t_start, t_sz);
     if (pos.IsValid()) {  // Inject success
@@ -474,10 +472,6 @@ public:
   T& operator[](size_t i) const {
     return Data()[i];
   }
-  // Adjust with respect the current array
-  T* Adjust(T* p, size_t& sz) const {
-    return Adjust(p, sz, *this);
-  }
 private:
   // Calculate distance between [s, e)
   size_t Distance(const T* s, const T* e) {
@@ -497,6 +491,10 @@ private:
     p = Adjust(p, begin, end);  // Adjust array start
     sz = p < p_end ? p_end - p : 0;  // Adjust array size
     return p;  // Return adjusted array start
+  }
+  // Adjust with respect the current array
+  T* Adjust(T* p, size_t& sz) const {
+    return Adjust(p, sz, *this);
   }
   // Adjust with respect input array t
   template<typename H>
