@@ -295,6 +295,10 @@ template<typename C,
 using Set = SetT<C, typename C::Type,
                  (const typename C::Type& (*)(const typename C::Type)) NULL,
                  LESS>;
+template<typename C,
+         auto LESS = (bool (*) (const typename C::Type::FirstType&,
+                                const typename C::Type::FirstType&)) NULL>
+using Map = SetT<C, typename C::Type::FirstType, C::Type::GetFirst, LESS>;
 }
 
 #endif

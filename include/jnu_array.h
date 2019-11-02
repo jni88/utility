@@ -794,6 +794,65 @@ using DArray = ArrayImp<DArrayDef<T, A, R, AL>>;
 // Define of hybrid array
 template<typename T, size_t S, typename A, size_t R, memory::Align AL = 8>
 using HArray = ArrayImp<HArrayDef<T, S, A, R, AL>>;
+template<typename FST, typename SND, typename A>
+class Pair {
+public:
+  typedef FST FirstType;
+  typedef SND SecondType;
+  typedef A Alloc;
+  Pair() {
+  }
+  Pair(const FST& f, const SND& s) {
+    m_first = f;
+    m_second = s;
+  }
+  template<typename T>
+  typename std::enable_if<std::is_same<A, ARR_OBJ_ALLOC>::value, Pair>&
+  operator=(const Pair& p) {
+    m_first = p.m_first;
+    m_second = p.m_second;
+    return *this;
+  }
+  template<typename T>
+  typename std::enable_if<std::is_same<A, ARR_OBJ_ALLOC>::value, Pair>&
+  operator=(Pair&& p) {
+    m_first = std::move(p.m_first);
+    m_second = std::move(p.m_second);
+    return *this;
+  }
+  FST& First() {
+    return m_first;
+  }
+  SND& Second() {
+    return m_second;
+  }
+  const FST& First() const {
+    return m_first;
+  }
+  const SND& Second() const {
+    return m_second;
+  }
+  static const FST& GetFirst(const Pair& p) {
+    return p.First();
+  }
+  static const FST& GetSecond(const Pair& p) {
+    return p.Second();
+  }
+private:
+  FST m_first;
+  SND m_second;
+};
+// Define of static array
+template<typename FST, typename SND, size_t S, typename A>
+using SArrayPair = ArrayImp<SArrayDef<Pair<FST, SND, A>, S, A>>;
+// Define of dynamic array
+template<typename FST, typename SND, typename A, size_t R,
+         memory::Align AL = 8>
+using DArrayPair = ArrayImp<DArrayDef<Pair<FST, SND, A>, A, R, AL>>;
+// Define of hybrid array
+template<typename FST, typename SND, size_t S, typename A, size_t R,
+         memory::Align AL = 8>
+using HArrayPair = ArrayImp<HArrayDef<Pair<FST, SND, A>, S, A, R, AL>>;
 }
 
 #endif
