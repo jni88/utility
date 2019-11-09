@@ -42,12 +42,12 @@ void ArraySetTest::Test() {
   SMap m1, m2;
   a.Insert(a.Begin(), SArr::Type("888", TestObj("888")), 1);
   a.Insert(a.Begin(), SArr::Type("333", TestObj("333")), 1);
-  JNU_UT_CHECK(m1.Inject(a, a.Begin(), a.End(), false));
+  JNU_UT_CHECK(m1.Inject(a, a.Begin(), a.End()));
   a.Insert(a.Begin(), SArr::Type("222", TestObj("222")), 1);
   a.Insert(a.Begin(), SArr::Type("333", TestObj("aaa")), 1);
   a.Insert(a.Begin(), SArr::Type("444", TestObj("444")), 1);
-  JNU_UT_CHECK(m1.Inject(a, a.Begin(), a.End(), true,
-                         m1.Begin() + 1, m1.End()));
+  JNU_UT_CHECK(m1.ReplaceInject(a, a.Begin(), a.End(),
+                                m1.Begin() + 1, m1.End()));
   JNU_UT_EQUAL(m1.Size(), 4);
   JNU_UT_CHECK(m1[0].First() == "222" && m1[0].Second().m_str == "222");
   JNU_UT_CHECK(m1[1].First() == "333" && m1[1].Second().m_str == "aaa");
@@ -58,15 +58,15 @@ void ArraySetTest::Test() {
   a.Insert(a.Begin(), SArr::Type("555", TestObj("555")), 1);
   a.Insert(a.Begin(), SArr::Type("999", TestObj("999")), 1);
   a.Insert(a.Begin(), SArr::Type("111", TestObj("111")), 1);
-  JNU_UT_CHECK(m2.Inject(a, a.Begin(), a.End(), false));
-  JNU_UT_CHECK(m1.InjectSorted(m2, m2.Begin(), m2.Begin() + 3, true,
-                               m1.Begin(), m1.End()));
+  JNU_UT_CHECK(m2.Inject(a, a.Begin(), a.End()));
+  JNU_UT_CHECK(m1.ReplaceInjectSorted(m2, m2.Begin(), m2.Begin() + 3,
+                                      m1.Begin(), m1.End()));
   JNU_UT_EQUAL(m1.Size(), 6);
   JNU_UT_EQUAL(m2.Size(), 2);
   JNU_UT_CHECK(m1[0].First() == "111" && m1[0].Second().m_str == "111");
   JNU_UT_CHECK(m1[3].First() == "444" && m1[3].Second().m_str == "ccc");
   JNU_UT_CHECK(m1[4].First() == "555" && m1[4].Second().m_str == "555");
-  JNU_UT_CHECK(m1.InjectSorted(m2, m2.Begin(), m2.End(), false));
+  JNU_UT_CHECK(m1.InjectSorted(m2, m2.Begin(), m2.End()));
   JNU_UT_EQUAL(m1.Size(), 8);
   JNU_UT_CHECK(m2.IsEmpty());
   JNU_UT_CHECK((m1.End() - 1)->First() == "999" &&
