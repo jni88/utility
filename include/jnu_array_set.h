@@ -5,8 +5,8 @@
 // Keep sorted data in continuous memory space may
 // provide efficiency for some types of applications
 
-#ifndef JNU_SET_H
-#define JNU_SET_H
+#ifndef JNU_ARRAY_SET_H
+#define JNU_ARRAY_SET_H
 
 #include <utility>
 #include <functional>
@@ -22,7 +22,7 @@ namespace jnu {
 template<typename C, typename K,
          auto KEY = (const K& (*)(const typename C::Type)) NULL,
          auto LESS = (bool (*) (const K&, const K&)) NULL>
-class SetT {
+class ArraySetT {
   // Default key comparison if LESS is not defined (NULL)
   template<decltype(LESS) L>
   static typename std::enable_if<L == NULL, bool>::type
@@ -54,7 +54,7 @@ public:
   typedef typename C::Iter Iter;  // Array iteration
   // Search or insertion result structure
   class Res {
-    friend class SetT;
+    friend class ArraySetT;
   public:
     // Get underline iterator
     Iter& operator*() {
@@ -92,28 +92,28 @@ public:
   // Set constructor
   // Input: rsv_sz - reserve memory size
   //        mm - memory mamanger (use buildin as default)
-  SetT(size_t rsv_sz = 0,
-      memory::MMBase* mm = &memory::MM_BUILDIN)
+  ArraySetT(size_t rsv_sz = 0,
+            memory::MMBase* mm = &memory::MM_BUILDIN)
     : m_data (rsv_sz, mm) {
   }
   // Deconstructor
-  ~SetT() {
+  ~ArraySetT() {
   }
   // Copy constructor
-  SetT(const SetT& s) {
+  ArraySetT(const ArraySetT& s) {
     *this = s;
   }
   // Move constructor
-  SetT(SetT&& s) {
+  ArraySetT(ArraySetT&& s) {
     *this = std::move(s);
   }
   // Assign operator
-  SetT& operator=(const SetT& s) {
+  ArraySetT& operator=(const ArraySetT& s) {
     m_data = s.m_data;
     return *this;
   }
   // Move operator
-  SetT& operator==(SetT&& s) {
+  ArraySetT& operator==(ArraySetT&& s) {
     m_data = std::move(s.m_data);
     return *this;
   }
@@ -411,13 +411,14 @@ private:
 template<typename C,
          auto LESS = (bool (*) (const typename C::Type&,
                                 const typename C::Type&)) NULL>
-using Set = SetT<C, typename C::Type,
-                 (const typename C::Type& (*)(const typename C::Type)) NULL,
-                 LESS>;
+using ArraySet = ArraySetT<C, typename C::Type,
+                           (const typename C::Type& (*)
+                           (const typename C::Type)) NULL,
+                           LESS>;
 template<typename C,
          auto LESS = (bool (*) (const typename C::Type::FirstType&,
                                 const typename C::Type::FirstType&)) NULL>
-using Map = SetT<C, typename C::Type::FirstType, C::Type::GetFirst, LESS>;
+using ArrayMap = ArraySetT<C, typename C::Type::FirstType, C::Type::GetFirst, LESS>;
 }
 
 #endif

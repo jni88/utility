@@ -1,7 +1,7 @@
 #include <string>
-#include "jnu_set.h"
 #include "jnu_array.h"
-#include "jnu_set_test.h"
+#include "jnu_array_set.h"
+#include "jnu_array_set_test.h"
 
 using namespace jnu_test;
 // Test object for array
@@ -34,10 +34,10 @@ struct TestObj {
   std::string m_str;
   void* m_ptr;
 };
-void SetTest::Test() {
+void ArraySetTest::Test() {
   typedef jnu::HArrayPair<std::string, TestObj,
                           2, jnu::ARR_OBJ_ALLOC, 8> SArr;
-  typedef jnu::Map<SArr> SMap;
+  typedef jnu::ArrayMap<SArr> SMap;
   SArr a;
   SMap m1, m2;
   a.Insert(a.Begin(), SArr::Type("888", TestObj("888")), 1);
