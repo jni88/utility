@@ -51,22 +51,17 @@ class ArraySetT {
 public:
   typedef T Type;  // Underline data type
   typedef K Key;  // Key type
-  typedef typename C::Iter Iter;  // Array iteration
   // Search or insertion result structure
   class Res {
     friend class ArraySetT;
   public:
-    // Get underline iterator
-    Iter& operator*() {
-      return m_it;
-    }
     // Get underline const iterator
-    const Iter& operator*() const {
+    T* operator*() const {
       return m_it;
     }
     // Check if underline iterator is valid
     operator bool() const {
-      return (bool) m_it;
+      return m_it != NULL;
     }
     // For insertion, check if data inserted
     bool Inserted() const {
@@ -79,14 +74,15 @@ public:
   private:
     // Default constructor
     Res()
-      : m_found (false) {
+      : m_it (NULL),
+        m_found (false) {
     }
     // Constructor
-    Res(const Iter& it, bool found)
+    Res(T* it, bool found)
       : m_it (it),
         m_found (found) {
     }
-    Iter m_it;  // Array iterator
+    T* m_it;  // Array iterator
     bool m_found;  // Flag for data found
   };
   // Set constructor
@@ -152,19 +148,19 @@ public:
     return m_data;
   }
   // Get begin of set
-  Iter Begin() const {
+  T* Begin() const {
     return m_data.Begin();
   }
   // Get end of set (exclude)
-  Iter End() const {
+  T* End() const {
     return m_data.End();
   }
   // Get reversed begin of set
-  Iter RBegin() const {
+  T* RBegin() const {
     return m_data.RBegin();
   }
   // Get reversed end of set (exclude)
-  Iter REnd() const {
+  T* REnd() const {
     return m_data.REnd();
   }
   // Get element at position i
@@ -289,11 +285,11 @@ public:
                         replace, hints...);
   }
   // Delete elements [p, p + t_sz)
-  Iter Delete(const Iter& p, size_t t_sz) {
+  T* Delete(T* p, size_t t_sz) {
     return m_data.Delete(p, t_sz);
   }
   // Delete elements [p, p_end)
-  Iter Delete(const Iter& p, const Iter& p_end) {
+  T* Delete(T* p, const T* p_end) {
     return Delete(p, Distance(p, p_end));
   }
   // Locate key
@@ -308,9 +304,9 @@ public:
   // Return: the location if found
   //         invalid location if not found
   template<typename... Hints>
-  Iter Find(const K& key, Hints... hints) const {
+  T* Find(const K& key, Hints... hints) const {
     Res r = Locate(key, hints...);
-    return r.Found() ? *r : Iter();
+    return r.Found() ? *r : NULL;
   }
 private:
   // Calculate distance between two iterators
@@ -319,7 +315,7 @@ private:
   }
   template<typename H, typename... Hints>
   Res Add(H* t, size_t t_sz,
-          Iter (C::*insert)(const Iter&, H*, size_t),
+          T* (C::*insert)(T*, H*, size_t),
           bool replace,
           Hints... hints) {
     if (m_data.Reserve(t_sz)) {
@@ -329,7 +325,7 @@ private:
         if (!r.Found()) {
           (m_data.*insert)(*r, t + i, 1);
         } else if (replace) {
-          *(*(*r)) = t[i];
+          *(*r) = t[i];
         }
       }
       return r;
@@ -338,18 +334,18 @@ private:
   }
   template<typename H, typename... Hints>
   Res Merge(H* t, size_t t_sz,
-            Iter (C::*insert)(const Iter&, H*, size_t),
+            T* (C::*insert)(T*, H*, size_t),
             bool replace,
             Hints... hints) {
     if (m_data.Reserve(t_sz)) {
       H* t_end = t + t_sz;
       H* a = t;
-      Iter a_it;
+      T* a_it = NULL;
       while (t < t_end) {
         Res r = Locate(GetKey<KEY>(*t), *r, hints...);
         if (r.Found()) {
           if (replace) {
-            *(*(*r)) = *t;
+            *(*r) = *t;
           }
           (m_data.*insert)(a_it, a, t - a);
           a = t + 1;
@@ -372,12 +368,12 @@ private:
   static bool Less(const K& a, const K& b) {
     return Compare<LESS>(a, b);
   }
-  Res Search(const Key& key, const Iter& s, const Iter& e) const {
-    Iter start = s;
-    Iter end = e;
+  Res Search(const Key& key, T* s, T* e) const {
+    T* start = s;
+    T* end = e;
     while (start < end) {
-      Iter mid = start + (end - start) / 2;
-      const Key& mid_key = GetKey<KEY>(*(*mid));
+      T* mid = start + (end - start) / 2;
+      const Key& mid_key = GetKey<KEY>(*mid);
       if (Less(key, mid_key)) {
         end = mid;
       } else if (Less(mid_key, key)) {
@@ -388,16 +384,16 @@ private:
     }
     return Res(start, false);
   } 
-  Res LocateR(const K& key, const Iter& s, const Iter& e) const {
+  Res LocateR(const K& key, T* s, T* e) const {
     return Search(key, s, e);
   }
   template<typename... Hints>
-  Res LocateR(const K& key, const Iter& s, const Iter& e,
-             const Iter& hint, Hints... hints) const {
+  Res LocateR(const K& key, T* s, T* e,
+              T* hint, Hints... hints) const {
     if (hint < s || hint >= e) {
       return LocateR(key, s, e, hints...);
     }
-    const K& hint_key = GetKey<KEY>(*(*hint));
+    const K& hint_key = GetKey<KEY>(*hint);
     if (key < hint_key) {
       return LocateR(key, s, hint, hints...);
     }

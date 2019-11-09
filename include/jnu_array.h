@@ -11,7 +11,6 @@
 #include <utility>
 #include "jnu_defines.h"
 #include "jnu_memory.h"
-#include "jnu_iterator.h"
 
 namespace jnu {
 // The following defines different
@@ -155,7 +154,6 @@ class ArrayImp : private C {
 public:
   typedef T Type;  // Underline element type
   typedef A Alloc;  // Define of allocator
-  typedef Iterator<T*, (T*)NULL> Iter;  // Define of iterator
   // Constructor
   // Input: mm - memory manager (for malloc and free)
   //        rsv_sz - size of reserved memory
@@ -313,13 +311,13 @@ public:
   // Return: success - iterator indicating the position of
   //         expand
   //         fail - invalid iterator
-  Iter Expand(const Iter& p, size_t t_sz) {
+  T* Expand(T* p, size_t t_sz) {
     size_t sz = m_sz;  // Current array size
     size_t new_sz = sz + t_sz;  // New size after expand
     T* org_data = Data();  // Old array
     // Check overflow and reserve memory
     if (new_sz < sz || !Reserve(new_sz)) {
-      return Iter();  // Fail, return invalid iterator
+      return NULL;  // Fail, return invalid iterator
     }
     // Adjust input iterator in case
     // new memory is allocated during Reserve
@@ -329,7 +327,7 @@ public:
     // Move elements to make space
     A::Move(pos + t_sz, pos, end - pos);
     m_sz = new_sz;  // Update array size
-    return Iter(pos);  // Return the position of expand
+    return pos;  // Return the position of expand
   }
   // Insert the same element multiple times into certain position
   // Input: p - insert position
@@ -337,16 +335,16 @@ public:
   //        t_sz - repeated times
   // Return: success - the position of insert
   //         fail - invalid iterator
-  Iter Insert(const Iter& p, const T& t, size_t t_sz) {
+  T* Insert(T* p, const T& t, size_t t_sz) {
     if (Overlap(&t, 1)) {  // Input overlap array is not allowed
-      return Iter();
+      return NULL;
     }
-    Iter pos = Expand(p, t_sz);  // Expand array
-    if (pos.IsValid()) {  // Expand success
-      Iter end = pos + t_sz;  // End position
+    T* pos = Expand(p, t_sz);  // Expand array
+    if (pos) {  // Expand success
+      T* end = pos + t_sz;  // End position
       // Repeat the input element
-      for (Iter i = pos; i < end; ++i) {
-        *(*i) = t;
+      for (T* i = pos; i < end; ++i) {
+        *i = t;
       }
     }
     return pos;  // Return insert position
@@ -356,19 +354,19 @@ public:
   //        t, t_sz - input array and length
   // Return: success - the position of insert
   //         fail - invalid iterator
-  Iter Insert(const Iter& p, const T* t, size_t t_sz) {
+  T* Insert(T* p, const T* t, size_t t_sz) {
     if (Overlap(t, t_sz)) {  // Input overlap array is not allowed
-      return Iter();
+      return NULL;
     }
-    Iter pos = Expand(p, t_sz);  // Expand array
-    if (pos.IsValid()) {  // Expand success
+    T* pos = Expand(p, t_sz);  // Expand array
+    if (pos) {  // Expand success
       A::Copy((T*)pos, t, t_sz);  // Copy raw array
     }
     return pos;  // Return insert position
   }
   // Insert a raw array into certain position
   // Here input array is defined by [t, t_end)
-  Iter Insert(const Iter& p, const T* t, const T* t_end) {
+  T* Insert(T* p, const T* t, const T* t_end) {
     return Insert(p, t, Distance(t, t_end));
   }
   // Inject (move) raw array into certain position
@@ -376,19 +374,19 @@ public:
   //        t, t_sz - input array and length
   // Return: success - the position of inject
   //         fail - invalid iterator
-  Iter Inject(const Iter& p, T* t, size_t t_sz) {
+  T* Inject(T* p, T* t, size_t t_sz) {
     if (Overlap(t, t_sz)) {  // Input overlap array is not allowed
-      return Iter();
+      return NULL;
     }
-    Iter pos = Expand(p, t_sz);  // Expand array
-    if (pos.IsValid()) {  // Expand success
+    T* pos = Expand(p, t_sz);  // Expand array
+    if (pos) {  // Expand success
       A::Move((T*)pos, t, t_sz);  // Move raw array
     }
     return pos;  // Return inject position
   }
   // Inject (move) raw array into certain position
   // Here input array is defined by [t, t_end)
-  Iter Inject(const Iter& p, T* t, T* t_end) {
+  T* Inject(T* p, T* t, T* t_end) {
     return Inject(p, t, Distance(t, t_end));
   }
   // Inject subarray
@@ -400,13 +398,13 @@ public:
   // Return: success - the position of inject
   //         fail - invalid iterator
   template<typename H>
-  Iter Inject(const Iter& p, H& t, T* t_start, size_t t_sz) {
+  T* Inject(T* p, H& t, T* t_start, size_t t_sz) {
     if (Overlap(t_start, t_sz)) {  // Input overlap array is not allowed
-      return Iter();
+      return NULL;
     }
     // Inject raw array of input
-    Iter pos = Inject(p, t_start, t_sz);
-    if (pos.IsValid()) {  // Inject success
+    T* pos = Inject(p, t_start, t_sz);
+    if (pos) {  // Inject success
       t.Delete(t_start, t_sz);  // Delete injected items
     }
     return pos;
@@ -414,7 +412,7 @@ public:
   // Inject subarray
   // Here input subarray is defined by [t_start, t_end)
   template<typename H>
-  Iter Inject(const Iter& p, H& t, T* t_start, T* t_end) {
+  T* Inject(T* p, H& t, T* t_start, T* t_end) {
     return Inject(p, t, t_start, Distance(t_start, t_end));
   }
   // Delete items from array
@@ -422,14 +420,14 @@ public:
   // Input: p - start position
   //        t_sz - number of items to delete
   // Return: the position of delete
-  Iter Delete(const Iter& p, size_t t_sz) {
+  T* Delete(T* p, size_t t_sz) {
     T* pos = Adjust(p, t_sz);  // Adjust delete position and size
     T* end = End();  // End of array
     size_t sz = end - pos - t_sz;  // Size to shift
     A::Move(pos, pos + t_sz, sz);  // Shift remain tail
     A::Destroy(pos + sz, t_sz);  // Destroy unused part of tail
     m_sz -= t_sz;  // Update array size
-    return Iter(pos);  // Return delete position
+    return pos;  // Return delete position
   }
   // Delete items from array
   // Flip tail into deleted position
@@ -440,7 +438,7 @@ public:
   // Input: p - start position
   //        t_sz - number of items to delete
   // Return: the position of delete
-  Iter DeleteFlip(const Iter& p, size_t t_sz) {
+  T* DeleteFlip(T* p, size_t t_sz) {
     T* pos = Adjust(p, t_sz);  // Adjust delete position and size
     T* end = End();  // End of array
     size_t sz = end - pos - t_sz;  // Size to flip
@@ -450,23 +448,23 @@ public:
     A::Move(pos, end - sz, sz);  // Flip the tail
     A::Destroy(pos + sz, t_sz - sz);  // Destroy unused part of tail
     m_sz -= t_sz;  // Update array size
-    return Iter(pos);  // Return the position of delete
+    return pos;  // Return the position of delete
   }
   // Access begin of array
-  Iter Begin() const {
-    return Iter(Data());
+  T* Begin() const {
+    return Data();
   }
   // Access end of array
-  Iter End() const {
-    return Iter(Data() + m_sz);
+  T* End() const {
+    return Data() + m_sz;
   }
   // Access reversed begin
-  Iter RBegin() const {
-    return Iter(End() - 1);
+  T* RBegin() const {
+    return End() - 1;
   }
   // Access reversed end
-  Iter REnd() const {
-    return Iter(Begin() - 1);
+  T* REnd() const {
+    return Begin() - 1;
   }
   // Access item
   T& operator[](size_t i) const {
