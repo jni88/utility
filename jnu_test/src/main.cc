@@ -1,3 +1,6 @@
+// By JNI
+// Test case for utility library
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "jnu_list_test.h"
@@ -8,17 +11,20 @@
 
 using namespace jnu_test;
 
+// Test cases
 class JnuTest : public jnu::TestCase{
+  // Main test entry
   void Test() {
-    Run<ListTest>("list");
-    Run<MemoryTest>("memory");
-    Run<CallbackTest>("callback");
-    Run<ArrayTest>("array");
-    Run<ArraySetTest>("array set");
+    Run<ListTest>("list");  // List test
+    Run<MemoryTest>("memory");  // Memory manager test
+    Run<CallbackTest>("callback");  // Callback test
+    Run<ArrayTest>("array");  // Array test
+    Run<ArraySetTest>("array set");  // Array set test
   }
 };
+// Main function
 int main() {
   JnuTest t;
-  t.Start("jnu library");
+  t.Start("jnu library");  // Run tests
   t.Exit();
 }

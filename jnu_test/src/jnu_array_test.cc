@@ -2,43 +2,12 @@
 // Implement array test cases
 
 #include "jnu_array_test.h"
-#include <utility>
-#include <string>
 
 using namespace jnu_test;
-// Test object for array
-struct TestObj {
-  TestObj() {
-    // Dynamic allocate
-    // To test if objects'
-    // constructor and deconstructor are
-    // properly called
-    m_ptr = malloc(128);
-  }
-  TestObj(const char* str)
-    : m_str (str) {
-    // Dynamic allocate
-    m_ptr = malloc(128);
-  }
-  TestObj& operator=(const TestObj& t) {
-    m_str = t.m_str;
-    return *this;
-  }
-  TestObj& operator=(TestObj&& t) {
-    m_str = std::move(t.m_str);
-    return *this;
-  }
-  ~TestObj() {
-    // Free memory
-    // If freed multiple times, it will crash
-    free (m_ptr);
-  }
-  std::string m_str;
-  void* m_ptr;
-};
 // General test cases for all types of array
 template<typename C>
 void ArrayTestImp<C>::Test() {
+  typedef typename C::Type TestObj;
   C a, b, c;  // Temp array variables for test
   TestObj o_arr[2];  // Input static array
   o_arr[0].m_str = "d_0123456789";

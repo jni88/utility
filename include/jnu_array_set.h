@@ -172,29 +172,34 @@ public:
   // Input: t, t_sz - input data array
   //        hints - the list of hint insert positions
   // Return: true - insert successful
+  // No replace insert, lease existing elements in array
+  // untouched
   template<typename... Hints>
   bool Insert(const T* t, size_t t_sz, Hints... hints) {
-    // Do add array
+    // Do on replace insert
     return Add<const T, NoReplace,
                Hints...>(t, t_sz, &C::Insert, hints...);
   }
+  // Replace inserted, replace existing elements with
+  // the input
   template<typename... Hints>
   bool ReplaceInsert(const T* t, size_t t_sz, Hints... hints) {
-    // Do add array
+    // Do replace insert
     return Add<const T, Replace,
                Hints...>(t, t_sz, &C::Insert, hints...);
   }
-  // Insert (unsorted) array of data
+  // On replace insert (unsorted) array of data
   // Input array is define by [t, t_end)
   template<typename... Hints>
   bool Insert(const T* t, const T* t_end, Hints... hints) {
     return Insert(t, Distance(t, t_end), hints...);
   }
+  // Replace insert
   template<typename... Hints>
   bool ReplaceInsert(const T* t, const T* t_end, Hints... hints) {
     return ReplaceInsert(t, Distance(t, t_end), hints...);
   }
-  // Insert single element
+  // No replace insert single element
   // Return: insert result, including
   //         the position of insertion and if
   //         the element already exists
@@ -203,12 +208,13 @@ public:
     return Add<const T, NoReplace,
                Hints...>(&t, 1, &C::Insert, hints...);
   }
+  // Replace insert single element
   template<typename... Hints>
   Res ReplaceInsert(const T& t, Hints... hints) {
     return Add<const T, Replace,
                Hints...>(&t, 1, &C::Insert, hints...);
   }
-  // Insert sorted array
+  // No replace insert sorted array
   // Assume input array t and t_sz is pre-sorted
   // Insert sorted array is faster than unsorted array
   // But you have to be sure, the input array is indeed
@@ -219,70 +225,78 @@ public:
     return Merge<const T, NoReplace,
                  Hints...>(t, t_sz, &C::Insert, hints...);
   }
+  // Replace insert sorted array
   template<typename... Hints>
   bool ReplaceInsertSorted(const T* t, size_t t_sz, Hints... hints) {
     // Use Merge function to insert sorted array
     return Merge<const T, Replace,
                  Hints...>(t, t_sz, &C::Insert, hints...);
   }
-  // Sorted array is defined by [t, t_end)
+  // No replace insert sorted array
+  // Array is defined by [t, t_end)
   template<typename... Hints>
   bool InsertSorted(const T* t, const T* t_end, Hints... hints) {
     return InsertSorted(t, Distance(t, t_end), hints...);
   }
+  // Replace insert sorted array
   template<typename... Hints>
   bool ReplaceInsertSorted(const T* t, const T* t_end, Hints... hints) {
     return ReplaceInsertSorted(t, Distance(t, t_end), hints...);
   }
-  // Inject (unsorted) array
+  // On replace inject (unsorted) array
   // Elements in array will be move to set
   template<typename... Hints>
   bool Inject(T* t, size_t t_sz, Hints... hints) {
     return Add<T, NoReplace, Hints...>(t, t_sz, &C::Inject, hints...);
   }
+  // Replace inject (unsorted) array
   template<typename... Hints>
   bool ReplaceInject(T* t, size_t t_sz, Hints... hints) {
     return Add<T, Replace, Hints...>(t, t_sz, &C::Inject, hints...);
   }
-  // Inject (unsorted) array [t, t_end)
+  // No Replace inject (unsorted) array [t, t_end)
   template<typename... Hints>
   bool Inject(T* t, T* t_end, Hints... hints) {
     return Inject(t, Distance(t, t_end), hints...);
   }
+  // Replace inject
   template<typename... Hints>
   bool ReplaceInject(T* t, T* t_end, Hints... hints) {
     return ReplaceInject(t, Distance(t, t_end), hints...);
   }
-  // Inject single element
+  // No replace inject single element
   template<typename... Hints>
   Res Inject(T& t, Hints... hints) {
     return Add<T, NoReplace, Hints...>(&t, 1, &C::Inject, hints...);
   }
+  // Replace inject single element
   template<typename... Hints>
   Res ReplaceInject(T& t, Hints... hints) {
     return Add<T, Replace, Hints...>(&t, 1, &C::Inject, hints...);
   }
-  // Inject sorted array
+  // No replace inject sorted array
   template<typename... Hints>
   bool InjectSorted(T* t, size_t t_sz, Hints... hints) {
     return Merge<T, NoReplace,
                  Hints...>(t, t_sz, &C::Inject, hints...);
   }
+  // Replace inject sorted array
   template<typename... Hints>
   bool ReplaceInjectSorted(T* t, size_t t_sz, Hints... hints) {
     return Merge<T, Replace,
                  Hints...>(t, t_sz, &C::Inject, hints...);
   }
-  // Inject sorted array [t, t_end)
+  // No replace inject sorted array [t, t_end)
   template<typename... Hints>
   bool InjectSorted(T* t, T* t_end, Hints... hints) {
     return InjectSorted(t, Distance(t, t_end), hints...);
   }
+  // Replace inject sorted array
   template<typename... Hints>
   bool ReplaceInjectSorted(T* t, T* t_end, Hints... hints) {
     return ReplaceInjectSorted(t, Distance(t, t_end), hints...);
   }
-  // Inject unsorted array
+  // No replace inject unsorted array
   // The input array will be cleared after inject
   template<typename H, typename... Hints>
   bool Inject(H& arr, T* t, size_t t_sz, Hints... hints) {
@@ -292,6 +306,7 @@ public:
     }
     return false;
   }
+  // Replace inject unsorted array
   template<typename H, typename... Hints>
   bool ReplaceInject(H& arr, T* t, size_t t_sz, Hints... hints) {
     if (ReplaceInject(t, t_sz, hints...)) {
@@ -300,16 +315,17 @@ public:
     }
     return false;
   }
-  // Inject unsorted array [t, t_end)
+  // On replace inject unsorted array [t, t_end)
   template<typename H, typename... Hints>
   bool Inject(H& arr, T* t, T* t_end, Hints... hints) {
     return Inject(arr, t, Distance(t, t_end), hints...);
   }
+  // Replace inject unsorted array
   template<typename H, typename... Hints>
   bool ReplaceInject(H& arr, T* t, T* t_end, Hints... hints) {
     return ReplaceInject(arr, t, Distance(t, t_end), hints...);
   }
-  // Inject sorted array
+  // No replace inject sorted array
   template<typename H, typename... Hints>
   bool InjectSorted(H& arr, T* t, size_t t_sz, Hints... hints) {
     if (InjectSorted(t, t_sz, hints...)) {
@@ -318,6 +334,7 @@ public:
     }
     return false;
   }
+  // Replace inject sorted array
   template<typename H, typename... Hints>
   bool ReplaceInjectSorted(H& arr, T* t, size_t t_sz, Hints... hints) {
     if (ReplaceInjectSorted(t, t_sz, hints...)) {
@@ -326,11 +343,12 @@ public:
     }
     return false;
   }
-  // Inject sorted array [t, t_end)
+  // No replace inject sorted array [t, t_end)
   template<typename H, typename... Hints>
   bool InjectSorted(H& arr, T* t, T* t_end, Hints... hints) {
     return InjectSorted(arr, t, Distance(t, t_end), hints...);
   }
+  // Replace inject sorted array
   template<typename H, typename... Hints>
   bool ReplaceInjectSorted(H& arr, T* t, T* t_end, Hints... hints) {
     return ReplaceInjectSorted(arr, t, Distance(t, t_end), hints...);
@@ -364,105 +382,133 @@ private:
   size_t Distance(const T* s, const T* e) {
     return s < e ? (size_t) (e - s) : 0;
   }
-  static void NoReplace(T* dst, T* src) {
-  }
+  // No replace functor for insert
   static void NoReplace(T* dst, const T* src) {
   }
-  static void Replace(T* dst, T* src) {
-    Alloc::Move(dst, src, 1);
+  // No replace functor for inject
+  static void NoReplace(T* dst, T* src) {
   }
+  // Replace functor for insert
   static void Replace(T* dst, const T* src) {
     Alloc::Copy(dst, src, 1);
   }
+  // Replace functor for inject
+  static void Replace(T* dst, T* src) {
+    Alloc::Move(dst, src, 1);
+  }
+  // Insert/inject unsorted array
+  // template arguments:
+  // H - input array type (const for insert
+  //     no const for inject)
+  // R - Replace or NoReplace functor
+  // Hints - search position hints
+  // Input: t, t_sz - input array
+  //        insert - insert/inject functor
+  //        hints - position hints
   template<typename H, void (*R)(T*, H*),
            typename... Hints>
   Res Add(H* t, size_t t_sz,
           T* (C::*insert)(T*, H*, size_t),
           Hints... hints) {
-    if (m_data.Reserve(t_sz)) {
-      Res r(m_data.End(), false);
+    if (m_data.Reserve(t_sz)) {  // Reserve space
+      Res r(m_data.Begin(), false);  // Return result
+      // For each input element
       for (size_t i = 0; i < t_sz; ++i) {
+        // Find its insert location in target array
         r = Locate(GetKey<KEY>(t[i]), *r, hints...);
-        if (!r.Found()) {
-          (m_data.*insert)(*r, t + i, 1);
-        } else {
-          (*R)(*r, t + i);
+        if (!r.Found()) {  // Element not exist
+          (m_data.*insert)(*r, t + i, 1);  // Do insert/inject
+        } else {  // Element already exists
+          (*R)(*r, t + i);  // Replace or NoReplace
         }
       }
-      return r;
+      return r;  // Return last insert position
     }
-    return Res();
+    return Res();  // Reserve fail, invalid result
   }
+  // Insert/inject sorted array
   template<typename H, void (*R)(T*, H*),
            typename... Hints>
   Res Merge(H* t, size_t t_sz,
             T* (C::*insert)(T*, H*, size_t),
             Hints... hints) {
-    if (m_data.Reserve(t_sz)) {
-      H* t_end = t + t_sz;
-      H* a = t;
-      T* a_it = NULL;
-      while (t < t_end) {
+    if (m_data.Reserve(t_sz)) {  // Reserve space
+      H* t_end = t + t_sz;  // End of input array
+      H* a = t;  // Start of input array
+      T* a_it = m_data.Begin();  // Insert/inject position
+      while (t < t_end) {  // Loop through input array
+        // Find location for current element
         Res r = Locate(GetKey<KEY>(*t), *r, hints...);
-        if (r.Found()) {
-          (*R)(*r, t);
-          (m_data.*insert)(a_it, a, t - a);
-          a = t + 1;
-        } else if (*r != a_it) {
-          (m_data.*insert)(a_it, a, t - a);
-          if (*r == m_data.End()) {
-            (m_data.*insert)(*r, t, t_end - t);
-            return r;
+        if (r.Found()) {  // Element exists in target array
+          (*R)(*r, t);  // Replace or NoReplace
+          (m_data.*insert)(a_it, a, t - a);  // Insert subarray
+          a = t + 1;  // Update insert position
+        } else if (*r != a_it) {  // Not exist, different insert position
+          (m_data.*insert)(a_it, a, t - a);  // Insert subarray
+          if (*r == m_data.End()) {  // Insert position reaches end
+            (m_data.*insert)(*r, t, t_end - t);  // Appand rest array
+            return r;  // Finished
           }
-          a_it = *r + (t - a);
-          a = t;
+          a_it = *r + (t - a);  // Update next insert position
+          a = t;  // Update start of subarray (waiting for insert)
         }
-        ++t;
+        ++t;  // Move to next elemnet
       }
-      (m_data.*insert)(a_it, a, t_end - a);
-      return Res(m_data.End(), false);
+      (m_data.*insert)(a_it, a, t_end - a);  // Insert rest array
+      return Res(a_it, false);  // Return last insert position
     }
-    return Res();
+    return Res();  // Reserve fail, return invalid position
   }
+  // Less comparison for keys
   static bool Less(const K& a, const K& b) {
     return Compare<LESS>(a, b);
   }
+  // Search key position in array
+  // Input: key - search key
+  //        s, e - the search range
   Res Search(const Key& key, T* s, T* e) const {
-    T* start = s;
-    T* end = e;
-    while (start < end) {
-      T* mid = start + (end - start) / 2;
-      const Key& mid_key = GetKey<KEY>(*mid);
-      if (Less(key, mid_key)) {
-        end = mid;
-      } else if (Less(mid_key, key)) {
-        start = mid + 1;
-      } else {
-        return Res(mid, true);
+    T* start = s;  // Start range
+    T* end = e;  // End range (not exclusive)
+    while (start < end) {  // Valid range
+      T* mid = start + (end - start) / 2;  // Middle of range
+      const Key& mid_key = GetKey<KEY>(*mid);  // Middle key
+      if (Less(key, mid_key)) {  // Less than middle
+        end = mid;  // Shrink range end to middle
+      } else if (Less(mid_key, key)) {  // Bigger than middle
+        start = mid + 1;  // Shrink range start pass middle
+      } else {  // Equal to middle
+        return Res(mid, true);  // Found
       }
     }
-    return Res(start, false);
-  } 
+    return Res(start, false);  // Not find, insert position
+  }
+  // Recursive search with hints
   Res LocateR(const K& key, T* s, T* e) const {
     return Search(key, s, e);
   }
+  // Search with hints
   template<typename... Hints>
   Res LocateR(const K& key, T* s, T* e,
               T* hint, Hints... hints) const {
-    if (hint < s || hint >= e) {
-      return LocateR(key, s, e, hints...);
+    if (hint < s || hint >= e) {  // hint not in search range
+      return LocateR(key, s, e, hints...);  // Skip to next hint
     }
-    const K& hint_key = GetKey<KEY>(*hint);
-    if (key < hint_key) {
+    const K& hint_key = GetKey<KEY>(*hint);  // Hint key
+    if (Less(key, hint_key)) {  // Less than hint
+      // Use hint as search range end
       return LocateR(key, s, hint, hints...);
     }
-    if (hint_key < key) {
+    if (Less(hint_key, key)) {  // Bigger than hint
+      // Use hint + 1 as search range start
       return LocateR(key, hint + 1, e, hints...);
     }
-    return Res(hint, true);
+    return Res(hint, true);  // Equal to hint, return found
   }
-  C m_data;
+  C m_data;  // Underline array
 };
+// Array set (underline element as key)
+// C - underline array type
+// LESS - Comparison of element
 template<typename C,
          auto LESS = (bool (*) (const typename C::Type&,
                                 const typename C::Type&)) NULL>
@@ -470,10 +516,16 @@ using ArraySet = ArraySetT<C, typename C::Type,
                            (const typename C::Type& (*)
                            (const typename C::Type)) NULL,
                            LESS>;
+// Array map (element is a pair object)
+// Using first object as key
+// LESS - Comparison of first object
 template<typename C,
          auto LESS = (bool (*) (const typename C::Type::FirstType&,
                                 const typename C::Type::FirstType&)) NULL>
-using ArrayMap = ArraySetT<C, typename C::Type::FirstType, C::Type::GetFirst, LESS>;
+using ArrayMap = ArraySetT<C,
+                           typename C::Type::FirstType,
+                           C::Type::GetFirst,
+                           LESS>;
 }
 
 #endif
