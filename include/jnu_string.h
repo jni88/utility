@@ -86,28 +86,111 @@ public:
   bool operator>(const T& s) const {
     return CompareA(s) > 0;
   }
+  void ExpandBegin(size_t t) {
+    m_data -= t;
+    m_size += t;
+  }
+  void ShrinkBegin(size_t t) {
+    m_data += t;
+    m_size = t >= m_size ? 0 : m_size - t;
+  }
+  void SetBegin(const char* t) {
+    m_size -= (t - m_data);
+    m_data = t;
+  }
+  void ExpandEnd(size_t t) {
+    m_size += t;
+  }
+  void ShrinkEnd(size_t t) {
+    m_size = t >= m_size ? 0 : m_size - t;
+  }
+  void SetEnd(const char* t) {
+    m_size = t > m_data ? t - m_data : 0;
+  }
+  void SetSize(size_t sz) {
+    m_size = sz;
+  }
+  const char* Begin() const {
+    return m_data;
+  }
+  const char* End() const {
+    return m_data + m_size;
+  }
+  const char* RBegin() const {
+    return m_data + m_size - 1;
+  }
+  const char* REnd() const {
+    return m_data - 1;
+  }
   const char* FindFirst(char c) const {
     return (const char*) memchr(m_data, c, m_size);
   }
-  const char* FindFirst(const char* ca) const {
-    StringView v(ca);
-    size_t sz = m_size;
-    for (size_t i = 0; i < sz; ++i) {
-      const char* t = m_data + i;
-      if (v.FindFirst(*t)) {
+  const char* FindLast(char c) const {
+    return (const char*) memrchr(m_data, c, m_size);
+  }
+  const char* FindFirstNot(char c) const {
+    const char* end = End();
+    for (const char* t = Begin(); t < end; ++t) {
+      if (*t != c) {
         return t;
       }
     }
     return NULL;
   }
-  const char* FindLast(char c) const {
-    return (const char*) memrchr(m_data, c, m_size);
+  const char* FindLastNot(char c) const {
+    const char* rend = REnd();
+    for (const char* t = RBegin(); t > rend; --t) {
+      if (*t != c) {
+        return t;
+      }
+    }
+    return NULL;
+  }
+  const char* FindFirst(const char* ca) const {
+    if (ca) {
+      StringView v(*this);
+      while(!v.IsEmpty() && *ca != TERM) {
+        if (const char* t = v.FindFirst(*ca)) {
+          v.SetEnd(t);
+        }
+        ++ca;
+      }
+      if (v.End() < End()) {
+        return v.End();
+      }
+    }
+    return NULL;
   }
   const char* FindLast(const char* ca) const {
+    if (ca) {
+      StringView v(*this);
+      while(!v.IsEmpty() && *ca != TERM) {
+        if (const char* t = v.FindLast(*ca)) {
+          v.SetBegin(t + 1);
+        }
+        ++ca;
+      }
+      if (v.Begin() > Begin()) {
+        return v.Begin() - 1;
+      }
+    }
+    return NULL;
+  }
+  const char* FindFirstNot(const char* ca) const {
     StringView v(ca);
-    for (size_t i = m_size; i > 0; --i) {
-      const char* t = m_data + i - 1;
-      if (v.FindFirst(*t)) {
+    const char* end = End();
+    for (const char* t = Begin(); t < end; ++t) {
+      if (!v.FindFirst(*t)) {
+        return t;
+      }
+    }
+    return NULL;
+  }
+  const char* FindLastNot(const char* ca) const {
+    StringView v(ca);
+    const char* rend = REnd();
+    for (const char* t = RBegin(); t > rend; --t) {
+      if (!v.FindFirst(*t)) {
         return t;
       }
     }
@@ -136,19 +219,22 @@ public:
     m_size = 0;
     return v;
   }
-  void ExpandFront(size_t t) {
-    m_data -= t;
-    m_size += t;
+  template<typename T>
+  void TrimBegin(const T& c) {
+    if (const char* t = FindFirstNot(c)) {
+      SetBegin(t);
+    }
   }
-  void ShrinkFront(size_t t) {
-    m_data += t;
-    m_size = t >= m_size ? 0 : m_size - t;
+  template<typename T>
+  void TrimEnd(const T& c) {
+    if (const char* t = FindLastNot(c)) {
+      SetEnd(t + 1);
+    }
   }
-  void ExpandBack(size_t t) {
-    m_size += t;
-  }
-  void ShrinkBack(size_t t) {
-    m_size = t >= m_size ? 0 : m_size - t;
+  template<typename T>
+  void Trim(const T& c) {
+    TrimBegin(c);
+    TrimEnd(c);
   }
   const char* Data() const {
     return m_data;
