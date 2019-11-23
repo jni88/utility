@@ -16,7 +16,7 @@ public:
   StringView()
     : m_size (0) {
   }
-  StringView(const char* s, const size_t sz)
+  StringView(const char* s, size_t sz)
     : m_data (s),
       m_size (s ? sz : 0) {
   }
@@ -298,13 +298,29 @@ private:
   const char* m_data;
   size_t m_size;
 };
-template<typename T>
+template<typename H>
 class StringImp {
 public:
   static constexpr char TERM = StringView::TERM;
-  typedef T Type;
-  StringImp() {
+  typedef H Type;
+  StringImp(size_t rsv = 0,
+            memory::MMBase* mm = &memory::MM_BUILDIN)
+    : m_arr(rsv + 1, mm) {
     m_arr.Insert(m_arr.Begin(), TERM, 1);
+  }
+  StringImp(const StringView& v,
+            memory::MMBase* mm = &memory::MM_BUILDIN)
+    : StringImp (v.Size(), mm) {
+    m_arr.Insert(m_arr.Begin(), v.Data(), v.Size());
+  }
+  template<typename T>
+  StringImp(const T& t,
+            memory::MMBase* mm = &memory::MM_BUILDIN)
+    : StringImp(StringView(t), mm) {
+  }
+  StringImp(const char* t,  size_t sz,
+            memory::MMBase* mm = &memory::MM_BUILDIN)
+    : StringImp(StringView(t, sz), mm) {
   }
   const char* Data() const {
     return m_arr.Data();
@@ -316,10 +332,14 @@ public:
     return m_arr.Size() - 1;
   }
 private:
-  T m_arr;
+  H m_arr;
 };
 template<size_t S>
 using SString = StringImp<SArray<char, S, ARR_MEM_ALLOC>>;
+template<size_t R, memory::Align AL = 8>
+using DString = StringImp<DArray<char, ARR_MEM_ALLOC, R, AL>>;
+template<size_t S, size_t R, memory::Align AL=8>
+using HString = StringImp<HArray<char, S, ARR_MEM_ALLOC, R, AL>>;
 }
 
 #endif

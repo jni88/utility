@@ -812,7 +812,8 @@ public:
   }
   // Define assign operator is first and second are objects
   template<typename T>
-  typename std::enable_if<std::is_same<A, ARR_OBJ_ALLOC>::value, Pair>&
+  typename std::enable_if
+  <std::is_same<A, ARR_OBJ_ALLOC>::value, Pair>::type&
   operator=(const Pair& p) {
     m_first = p.m_first;
     m_second = p.m_second;
@@ -820,7 +821,8 @@ public:
   }
   // Define move operator is first and second are objects
   template<typename T>
-  typename std::enable_if<std::is_same<A, ARR_OBJ_ALLOC>::value, Pair>&
+  typename std::enable_if
+  <std::is_same<A, ARR_OBJ_ALLOC>::value, Pair>::type&
   operator=(Pair&& p) {
     m_first = std::move(p.m_first);
     m_second = std::move(p.m_second);
