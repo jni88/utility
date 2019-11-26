@@ -29,6 +29,11 @@ static bool IsAligned(const Align& al, void* ptr) {
   // Then check if pointer can be divided by alignment
   return al <= 1 || JNU_MOD((uintptr_t)ptr, al) == 0;
 }
+// Calculate distance between [s, e)
+template<typename T>
+static size_t Distance(const T* s, const T* e) {
+  return s < e ? (size_t) (e - s) : 0;
+}
 // Base of memory manage interface
 class MMBase {
 public:

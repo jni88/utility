@@ -472,8 +472,8 @@ public:
   }
 private:
   // Calculate distance between [s, e)
-  size_t Distance(const T* s, const T* e) {
-    return s < e ? (size_t) (e - s) : 0;
+  static size_t Distance(const T* s, const T* e) {
+    return memory::Distance(s, e);
   }
   // Adjust array start p,
   // make sure it is in range [begin, end)

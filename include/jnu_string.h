@@ -322,6 +322,48 @@ public:
             memory::MMBase* mm = &memory::MM_BUILDIN)
     : StringImp(StringView(t, sz), mm) {
   }
+  StringImp& operator=(const StringImp& t) {
+    m_arr = t.m_arr;
+    return *this;
+  }
+  template<typename T>
+  StringImp& operator=(const T& t) {
+    StringView v(t);
+    if (m_arr.Reserve(v.Size() + 1)) {
+      m_arr = v;
+      m_arr.Insert(m_arr.End(), TERM, 1);
+    }
+    return *this;
+  }
+  StringImp& operator=(StringImp&& t) {
+    m_arr = std::move(t.m_arr);
+    return *this;
+  }
+  char* Insert(char* p, char c, size_t t) {
+    p = Adjust(p);
+    return m_arr.Insert(p, c, t);
+  }
+  char* Insert(char* p, const char* t, size_t sz) {
+    p = Adjust(p);
+    return m_arr.Insert(p, t, sz);
+  }
+  char* Insert(char* p, const char* t, const char* t_end) {
+    return Insert(p, t, Distance(t, t_end));
+  }
+  template<typename T>
+  char* Insert(char* p, const T& t) {
+    StringView v(t);
+    p = Adjust(p);
+    return m_arr.Insert(p, v.Data(), v.Size());
+  }
+  char* Delete(char* p, size_t t_sz) {
+    p = m_arr.Delete(p, t_sz);
+    if (m_arr.IsEmpty() ||
+        *(m_arr.RBegin()) != TERM) {
+      m_arr.Insert(m_arr.End(), TERM, 1);
+    }
+    return p;
+  }
   const char* Data() const {
     return m_arr.Data();
   }
@@ -331,7 +373,32 @@ public:
   size_t Size() const {
     return m_arr.Size() - 1;
   }
+  bool IsEmpty() const {
+    return Size() <= 0;
+  }
+  char* Begin() const {
+    return m_arr.Data();
+  }
+  char* End() const {
+    return Begin() + Size();
+  }
+  char* RBegin() const {
+    return End() - 1;
+  }
+  char* REnd() const {
+    return Begin() - 1;
+  }
+  char& operator[](size_t i) const {
+    return m_arr[i];
+  }
 private:
+  static size_t Distance(const char* s, const char* e) {
+    return memory::Distance(s, e);
+  }
+  char* Adjust(char* p) {
+    char* end = End();
+    return p > end ? end : p;
+  }
   H m_arr;
 };
 template<size_t S>

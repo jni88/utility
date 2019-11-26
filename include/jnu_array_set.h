@@ -379,8 +379,8 @@ public:
   }
 private:
   // Calculate distance between two iterators
-  size_t Distance(const T* s, const T* e) {
-    return s < e ? (size_t) (e - s) : 0;
+  static size_t Distance(const T* s, const T* e) {
+    return memory::Distance(s, e);
   }
   // No replace functor for insert
   static void NoReplace(T* dst, const T* src) {
