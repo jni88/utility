@@ -337,6 +337,7 @@ public:
   }
   StringImp& operator=(StringImp&& t) {
     m_arr = std::move(t.m_arr);
+    t.Insert(t.End(), TERM, 1);
     return *this;
   }
   char* Insert(char* p, char c, size_t t) {
@@ -363,6 +364,22 @@ public:
       m_arr.Insert(m_arr.End(), TERM, 1);
     }
     return p;
+  }
+  void Clear() {
+    m_arr.Clear();
+    m_arr.Insert(m_arr.End(), TERM, 1);
+  }
+  void ToUpper() {
+    char* end = End();
+    for (char* i = Begin(); i != end; ++i) {
+      *i = (char) toupper(*i);
+    }
+  }
+  void ToLower() {
+    char* end = End();
+    for (char* i = Begin(); i != end; ++i) {
+      *i = (char) tolower(*i);
+    }
   }
   const char* Data() const {
     return m_arr.Data();
@@ -407,6 +424,36 @@ template<size_t R, memory::Align AL = 8>
 using DString = StringImp<DArray<char, ARR_MEM_ALLOC, R, AL>>;
 template<size_t S, size_t R, memory::Align AL=8>
 using HString = StringImp<HArray<char, S, ARR_MEM_ALLOC, R, AL>>;
+template<typename H>
+class StringBuffer {
+public:
+  typedef H Type;
+  class Handle {
+  public:
+    Handle()
+      : m_data (NULL),
+        m_size (0) {
+    }
+    char* Data() const {
+      return m_data ? m_data->Begin() + m_offset : NULL;
+    }
+    size_t Size() const {
+      return m_size;
+    }
+  private:
+    Handle(StringBuffer& data,
+         size_t offset,
+         size_t size) {
+      size_t d_sz = data.Size();
+    }
+    ~Handle() {
+    }
+    StringBuffer* m_data;
+    size_t m_offset;
+    size_t m_size;
+    Handle* m_next;
+  };
+};
 }
 
 #endif
